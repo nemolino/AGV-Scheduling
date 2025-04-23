@@ -5,6 +5,7 @@
 
 #include <stdbool.h>
 
+
 extern int J;
 
 extern int STATE_SIZE;
@@ -26,7 +27,7 @@ typedef struct State {
         ... altre componenti da vedere
     */ 
     int* arr;          
-    struct State *pred;
+    struct State* pred;
 } State;
 
 void    init_globals    (Instance* ins);
@@ -40,7 +41,5 @@ void state_set_t                    (State* s, int value);
 void state_set_x                    (State* s, int value);
 void state_set_count_not_started    (State* s, int value);
 void state_set_count_finished       (State* s, int value);
-
-
 
 #endif 
