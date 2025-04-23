@@ -1,9 +1,6 @@
 #include "instance.h"
-
-#include <stdio.h>
-#include <stdlib.h>
     
-int instance_init_U(Instance* ins);
+void instance_init_U(Instance* ins);
 
 Instance* instance_create(char* file_path)
 {
@@ -13,34 +10,18 @@ Instance* instance_create(char* file_path)
         exit(EXIT_FAILURE);
     }
 
-    Instance* ins = (Instance*)malloc(sizeof(Instance));
-    if (ins == NULL) {
-        printf("Memory allocation failed!\n");
-        exit(EXIT_FAILURE);
-    }
+    Instance* ins = (Instance*)safe_malloc(sizeof(Instance));
 
     fscanf(fp, "%d", &(ins->W));
     fscanf(fp, "%d", &(ins->J));
 
-    ins->p = (int *)calloc(ins->W+1, sizeof(int));
-    if (ins->p == NULL) {
-        printf("Memory allocation failed!\n");
-        exit(EXIT_FAILURE);
-    }
+    ins->p = (int *)safe_calloc(ins->W+1, sizeof(int));
     for (int i = 1; i < ins->W+1; i++) {
         fscanf(fp, "%d", &(ins->p)[i]);
     }
     
-    ins->t = malloc((ins->W+2) * sizeof(int *));
-    if (ins->t == NULL) {
-        printf("Memory allocation failed!\n");
-        exit(EXIT_FAILURE);
-    }
-    (ins->t)[0] = malloc((ins->W+2) * (ins->W+2) * sizeof(int));
-    if ((ins->t)[0] == NULL) {
-        printf("Memory allocation failed!\n");
-        exit(EXIT_FAILURE);
-    }
+    ins->t = (int**)safe_malloc((ins->W+2) * sizeof(int*));
+    (ins->t)[0] = (int*)safe_malloc((ins->W+2) * (ins->W+2) * sizeof(int));
     for(int i = 1; i < (ins->W+2); i++) {
         (ins->t)[i] = (ins->t)[0] + i * (ins->W+2);
     }
@@ -86,7 +67,7 @@ void instance_destroy(Instance* ins)
     free(ins);
 }
 
-int instance_init_U(Instance* ins)
+void instance_init_U(Instance* ins)
 {
     int tot_processing_time = 0;
 	for (int i = 1; i < ins->W+1; i++) {

@@ -1,6 +1,11 @@
 #ifndef INSTANCE_H
 #define INSTANCE_H
 
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "utils.h"
+
 typedef struct {
     int J;
     int W;

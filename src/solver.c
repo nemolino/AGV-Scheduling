@@ -1,8 +1,4 @@
 #include "solver.h"
-#include "state.h"
-
-#include <stdio.h>
-#include <time.h>
     
 void solver_run(Instance* ins)
 {
@@ -22,30 +18,57 @@ void solver_run(Instance* ins)
     State* initial_state = state_create();
     state_set_count_not_started(initial_state, J);
 
-    /*
+    Pool* pool = pool_create(U);
+    pool_add_initial_state(pool, initial_state);
 
-    while (!pool.isEmpty()){
+    while (!pool_is_empty(pool)){
 
-        // S := pool.popUnchecked()
+        State* s = pool_pop(pool); 
 
+        // printf("popped state : ");
+        // state_print(s);
 
+        if (state_is_final(s)){
+            if (state_get_t(s) < best_obj_val){
+                best_obj_val = state_get_t(s);
+                best_state = s;
+            } else {
+                // ... lo stato è aggiunto ai free
+            }
+            continue;
+        }
 
-		if S.IsFinal() {
-			if S.t < bestObjVal {
-				bestObjVal = S.t
-				bestState = S
+        for (
+            int k = J-1-state_get_count_finished(s); 
+            k >= max(0, state_get_count_not_started(s)-1); 
+            k--
+        ) {
+            // trying to move towards job k
+
+            //	grazie a k := J - 1 - S.countFinished :
+			//		non mi muovo mai verso il serbatoio finale, cioè ho sempre dest != M+1
+			// 	grazie a k >= max(0, S.countNotStarted-1)
+			// 		mi muovo verso il serbatoio iniziale al massimo 1 volta, cioè ho dest == 0 al massimo 1 volta
+
+            int dest = state_get_xk(s,k);
+
+            // mi muovo solo verso macchine con la dx libera o con a dx il serbatoio finale
+			if (dest+1 != W+1 && state_is_xk_busy(s, dest+1)) {
+				continue;
 			}
-			continue
-		}
 
-    } 
-    */
 
-    state_print(initial_state);
+        }
+        
+        
+    }
+    
     state_destroy(initial_state);
 
+    pool_free(pool);
     
     clock_t toc = clock();
     printf("... solver_run END\n");
     printf("solver_run execution time = %f s\n", (double)(toc - tic) / CLOCKS_PER_SEC);
 }
+

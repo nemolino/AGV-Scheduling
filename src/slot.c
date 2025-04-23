@@ -1,24 +1,9 @@
-#include "slot.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-
-typedef struct Node {
-    int data;
-    struct Node* prev;
-    struct Node* next;
-} Node;
-
-typedef struct Slot {
-    Node* head;
-    Node* tail;
-    int size;
-} Slot;
+#include "solver.h"
 
 // Slot is a doubly linked list with pointers to head and tail
 Slot* slot_create() 
 {
-    Slot* list = (Slot*)malloc(sizeof(Slot));
+    Slot* list = (Slot*)safe_malloc(sizeof(Slot));
     list->head = NULL;
     list->tail = NULL;
     list->size = 0;
@@ -26,26 +11,29 @@ Slot* slot_create()
 }
 
 // Insert at the end of the list
-void slot_insert(Slot* list, int value) 
+void slot_insert(Slot* list, State* s)
 {
-    Node* newNode = (Node*)malloc(sizeof(Node));
-    newNode->data = value;
-    newNode->prev = list->tail;
-    newNode->next = NULL;
+    Node* new_node = (Node*)safe_malloc(sizeof(Node));
+    new_node->s = s;
+    new_node->prev = list->tail;
+    new_node->next = NULL;
     
     if (list->tail) {
-        list->tail->next = newNode;
+        list->tail->next = new_node;
     } else {
-        list->head = newNode;
+        list->head = new_node;
     }
-    list->tail = newNode;
+    list->tail = new_node;
     list->size++;
 }
 
 // Delete a specific node (given a pointer to the node)
-void slot_delete(Slot* list, Node* node) 
-{
-    if (!node) return;
+State* slot_delete(Slot* list, Node* node) 
+{   
+    if (node == NULL) {
+        printf("slot_delete : node == NULL\n");
+        exit(EXIT_FAILURE);
+    }
 
     if (node->prev) {
         node->prev->next = node->next;
@@ -58,19 +46,25 @@ void slot_delete(Slot* list, Node* node)
     } else {
         list->tail = node->prev;
     }
-
+    
+    State* s = node->s;
     free(node);
     list->size--;
+
+    return s;
 }
 
 void slot_print(Slot* list) 
 {
+    if (!list->head){
+        printf("empty slot\n");
+        return;
+    }
     Node* current = list->head;
     while (current) {
-        printf("%d ", current->data);
+        printf("%p ", current->s);
         current = current->next;
     }
-    printf("\n");
 }
 
 void slot_free(Slot* list) 

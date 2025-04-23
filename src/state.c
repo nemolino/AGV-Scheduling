@@ -1,7 +1,4 @@
-#include "state.h"
-
-#include <stdio.h>
-#include <stdlib.h>
+#include "solver.h"
 
 int J;
 
@@ -28,20 +25,11 @@ void init_globals(Instance* ins)
 
 State* state_create()
 {
-    State* s = (State*)malloc(sizeof(State));
-    if (s == NULL) {
-        printf("Memory allocation failed!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    s->arr = (int *)calloc(STATE_SIZE, sizeof(int));
-    if (s->arr == NULL) {
-        printf("Memory allocation failed!\n");
-        exit(EXIT_FAILURE);
-    }
-
+    State* s = (State*)safe_malloc(sizeof(State));
+    s->arr = (int *)safe_calloc(STATE_SIZE, sizeof(int));
+    s->id = -1;
+    s->slot_node = NULL;
     s->pred = NULL;
-    
     return s;
 }
 
@@ -67,7 +55,14 @@ void state_destroy(State* s)
 
 bool state_is_final (State* s)
 {
-    (s->arr)[COUNT_FINISHED] == J;
+    return (s->arr)[COUNT_FINISHED] == J;
+}
+
+bool state_is_xk_busy (State* s, int k)
+{
+    // TODO binary search to find k in arr[xk,ek)
+    
+    return true;
 }
 
 void state_set_t(State* s, int value)
@@ -90,3 +85,32 @@ void state_set_count_finished(State* s, int value)
     (s->arr)[COUNT_FINISHED] = value;
 }
 
+void state_set_id(State* s, int value)
+{
+    s->id = value;
+}
+
+int state_get_t(State* s)
+{
+    return (s->arr)[T];
+}
+
+int state_get_xk(State* s, int k)
+{
+    return (s->arr)[XK+k];
+}
+
+int state_get_ek(State* s, int k)
+{
+    return (s->arr)[EK+k];
+}
+
+int state_get_count_not_started(State* s)
+{
+    return (s->arr)[COUNT_NOT_STARTED];
+}
+
+int state_get_count_finished(State* s)
+{
+    return (s->arr)[COUNT_FINISHED];
+}
