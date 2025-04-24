@@ -69,43 +69,53 @@ extern int EK;
 extern int COUNT_NOT_STARTED;
 extern int COUNT_FINISHED;
 
-void    init_globals        (Instance* ins);
-State*  state_create        ();
-void    state_print         (State* s);
-void    state_destroy       (State* s);
-bool    state_is_final      (State* s);
-bool    state_is_xk_busy    (State* s, int k);  
+void    init_globals                (Instance* ins);
+State*  state_create                ();
+State*  state_get_or_create         (Pool* pool);
+void    state_clean_all_except_id   (State* s);
+void    state_print                 (State* s);
+void    state_destroy               (State* s);
+bool    state_is_final              (State* s); 
+bool    state_is_workstation_busy   (State* s, int i);
 
-void    state_set_t                     (State* s, int value);
-void    state_set_x                     (State* s, int value);
-void    state_set_count_not_started     (State* s, int value);
-void    state_set_count_finished        (State* s, int value);
-void    state_set_id                    (State* s, int value);
+void    state_set_t                 (State* s, int value);
+void    state_set_x                 (State* s, int value);
+void    state_set_xk                (State* s, int k, int value);
+void    state_set_xk_all_by_copy    (State* s, State* other);
+void    state_set_ek                (State* s, int k, int value);
+void    state_set_ek_all_by_copy    (State* s, State* other);
+void    state_set_count_not_started (State* s, int value);
+void    state_set_count_finished    (State* s, int value);
+void    state_set_id                (State* s, int value);
 
-int     state_get_t                     (State* s);
-int     state_get_xk                    (State* s, int k);
-int     state_get_ek                    (State* s, int k);
-int     state_get_count_not_started     (State* s);
-int     state_get_count_finished        (State* s);
+int     state_get_t                 (State* s);
+int     state_get_x                 (State* s);
+int     state_get_xk                (State* s, int k);
+int     state_get_ek                (State* s, int k);
+int     state_get_count_not_started (State* s);
+int     state_get_count_finished    (State* s);
 
 // --- Slot -------------------------------------------------------------------
 
-Slot*   slot_create ();
-void    slot_insert (Slot* list, State* s);
-State*  slot_delete (Slot* list, Node* node);
-void    slot_print  (Slot* list);
-void    slot_free   (Slot* list);
+Slot*   slot_create                 ();
+void    slot_insert                 (Slot* list, State* s);
+State*  slot_delete                 (Slot* list, Node* node);
+void    slot_print                  (Slot* list);
+void    slot_free                   (Slot* list);
 
 // --- Pool -------------------------------------------------------------------
 
-Pool*   pool_create             (int U);
-void    pool_add_initial_state  (Pool* pool, State* s);
-bool    pool_is_empty           (Pool* pool);
-State*  pool_pop                (Pool* pool);
-void    pool_free               (Pool* pool);
+Pool*   pool_create                 (int U);
+void    pool_push_free_state        (Pool* pool, State* s);
+bool    pool_any_free_state         (Pool* pool);
+State*  pool_pop_free_state         (Pool* pool);
+void    pool_add_state              (Pool* pool, State* s);
+bool    pool_is_empty               (Pool* pool);
+State*  pool_pop                    (Pool* pool);
+void    pool_free                   (Pool* pool);
 
 // --- Solver -----------------------------------------------------------------
 
-void    solver_run  (Instance* ins);
+void    solver_run                  (Instance* ins);
 
 #endif 

@@ -33,6 +33,29 @@ State* state_create()
     return s;
 }
 
+State* state_get_or_create(Pool* pool)
+{
+    State* s;
+    if (pool_any_free_state(pool)){
+        s = pool_pop_free_state(pool);
+        state_clean_all_except_id(s);
+    } else {
+        s = state_create();
+        state_set_id(s, pool->ID_next);
+        pool->ID_next++;
+    }
+    return s;
+}
+
+void state_clean_all_except_id (State* s)
+{
+    for (int i = 0; i < STATE_SIZE; i++) {
+        (s->arr)[i] = 0;
+    }
+    s->slot_node = NULL;
+    s->pred = NULL;
+}
+
 void state_print(State* s)
 {
     printf("arr : t = %d , x = %d , xk = [ ", (s->arr)[T], (s->arr)[X]);
@@ -58,11 +81,15 @@ bool state_is_final (State* s)
     return (s->arr)[COUNT_FINISHED] == J;
 }
 
-bool state_is_xk_busy (State* s, int k)
+bool state_is_workstation_busy (State* s, int i)
 {
-    // TODO binary search to find k in arr[xk,ek)
-    
-    return true;
+    // find i in arr[xk,ek), could be a binary search
+    for (int k = XK; k < EK; k++) {
+       if ((s->arr)[k] == i){
+        return true;
+       }
+    }
+    return false;
 }
 
 void state_set_t(State* s, int value)
@@ -73,6 +100,30 @@ void state_set_t(State* s, int value)
 void state_set_x(State* s, int value)
 {
     (s->arr)[X] = value;
+}
+
+void state_set_xk(State* s, int k, int value)
+{
+    (s->arr)[XK+k] = value;
+}
+
+void state_set_xk_all_by_copy(State* s, State* other)
+{
+    for (int i = XK; i < EK; i++) {
+        (s->arr)[i] = (other->arr)[i];
+    }
+}
+
+void state_set_ek(State* s, int k, int value)
+{
+    (s->arr)[EK+k] = value;
+}
+
+void state_set_ek_all_by_copy(State* s, State* other)
+{
+    for (int i = EK; i < COUNT_NOT_STARTED; i++) {
+        (s->arr)[i] = (other->arr)[i];
+    }
 }
 
 void state_set_count_not_started(State* s, int value)
@@ -93,6 +144,11 @@ void state_set_id(State* s, int value)
 int state_get_t(State* s)
 {
     return (s->arr)[T];
+}
+
+int state_get_x(State* s)
+{
+    return (s->arr)[X];
 }
 
 int state_get_xk(State* s, int k)

@@ -26,10 +26,29 @@ Pool* pool_create(int U)
     return pool;
 }
 
-void pool_add_initial_state(Pool* pool, State* s)
+void pool_push_free_state(Pool* pool, State* s)
 {
-    s->id = pool->ID_next;
-    pool->ID_next++;
+    (pool->free_states)[pool->free_states_len] = s;
+    pool->free_states_len++;
+}
+
+bool pool_any_free_state(Pool* pool)
+{
+    return pool->free_states_len > 0;
+}
+
+// REQUIRES : pool_any_free_state(pool) == true
+State* pool_pop_free_state(Pool* pool)
+{
+
+    State* s = (pool->free_states)[pool->free_states_len-1];
+    (pool->free_states)[pool->free_states_len-1] = NULL;
+    pool->free_states_len--;
+    return s;
+}
+
+void pool_add_state(Pool* pool, State* s)
+{
     slot_insert(pool->time_slots[state_get_t(s)], s);
 }
 
