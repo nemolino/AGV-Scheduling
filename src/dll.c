@@ -1,60 +1,96 @@
 #include "solver.h"
 
-// Slot is a doubly linked list with pointers to head and tail
-Slot* slot_create() 
+/**
+ * @brief Allocates an empty DLL
+ * 
+ * @return A pointer to the allocated DLL
+ */
+DLL* dll_create() 
 {
-    Slot* list = (Slot*)safe_malloc(sizeof(Slot));
+    DLL* list = (DLL*)safe_malloc(sizeof(DLL));
     list->head = NULL;
     list->tail = NULL;
     list->size = 0;
     return list;
 }
 
-// Insert at the end of the list
-void slot_insert(Slot* list, State* s)
+/**
+ * @brief De-allocates dll and all the states that it contains
+ * 
+ * @param dll A pointer to the DLL to free
+ */
+void dll_free(DLL* dll) 
+{
+    Node* current = dll->head;
+    while (current) {
+        Node* temp = current;
+        current = current->next;
+        state_destroy(temp->s);
+        free(temp);
+    }
+    free(dll);
+}
+
+/**
+ * @brief allocates a Node containing s, inserts it at the end of dll and returns it
+ * 
+ * @param dll 
+ * @param s 
+ * @return Node* 
+ */
+Node* dll_insert(DLL* dll, State* s)
 {
     Node* new_node = (Node*)safe_malloc(sizeof(Node));
     new_node->s = s;
-    new_node->prev = list->tail;
+    new_node->prev = dll->tail;
     new_node->next = NULL;
     
-    if (list->tail) {
-        list->tail->next = new_node;
+    if (dll->tail) {
+        dll->tail->next = new_node;
     } else {
-        list->head = new_node;
+        dll->head = new_node;
     }
-    list->tail = new_node;
-    list->size++;
+    dll->tail = new_node;
+    dll->size++;
+
+    return new_node;
 }
 
-// Delete a specific node (given a pointer to the node)
-State* slot_delete(Slot* list, Node* node) 
+/**
+ * @brief deletes node from dll (given a pointer to it) and returns the state contained in node
+ * 
+ * @param dll 
+ * @param node 
+ * @return State* 
+ */
+State* dll_delete(DLL* dll, Node* node) 
 {   
     if (node == NULL) {
-        printf("slot_delete : node == NULL\n");
+        printf("dll_delete : node == NULL\n");
         exit(EXIT_FAILURE);
     }
 
     if (node->prev) {
         node->prev->next = node->next;
     } else {
-        list->head = node->next;
+        dll->head = node->next;
     }
 
     if (node->next) {
         node->next->prev = node->prev;
     } else {
-        list->tail = node->prev;
+        dll->tail = node->prev;
     }
     
     State* s = node->s;
     free(node);
-    list->size--;
+    dll->size--;
 
     return s;
 }
 
-void slot_print(Slot* list) 
+/*
+void dll_print(DLL* list) 
 {
     if (!list->head){
         printf("empty slot\n");
@@ -66,21 +102,11 @@ void slot_print(Slot* list)
         current = current->next;
     }
 }
-
-void slot_free(Slot* list) 
-{
-    Node* current = list->head;
-    while (current) {
-        Node* temp = current;
-        current = current->next;
-        free(temp);
-    }
-    free(list);
-}
+*/
 
 /* Example usage
 int main() {
-    Slot* list = createSlot();
+    DLL* list = createSlot();
 
     insertAtEnd(list, 10);
     insertAtEnd(list, 20);

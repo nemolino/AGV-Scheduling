@@ -1,5 +1,9 @@
 #include "solver.h"
 
+int STATE_ALLOC;
+int STATE_FREE;
+int CREO;
+int CACHO;
 int J;
 
 int STATE_SIZE;
@@ -12,15 +16,19 @@ int COUNT_FINISHED;
 
 void init_globals(Instance* ins)
 {
+    STATE_ALLOC = 0;
+    STATE_FREE = 0;
+    CREO = 0;
+    CACHO = 0;
     J = ins->J;
 
-    STATE_SIZE = 2 +J +J +2;
+    STATE_SIZE = 2+J+J+2;
     T = 0;
     X = 1;
     XK = 2;
-    EK = 2 +J;
-    COUNT_NOT_STARTED = 2 +J +J;
-    COUNT_FINISHED = 2 +J +J + 1;
+    EK = 2+J;
+    COUNT_NOT_STARTED = 2+J+J;
+    COUNT_FINISHED = 2+J+J+1;
 }
 
 State* state_create()
@@ -30,30 +38,32 @@ State* state_create()
     s->id = -1;
     s->slot_node = NULL;
     s->pred = NULL;
+    s->ref_count = 0;
+    STATE_ALLOC++;
     return s;
 }
 
-State* state_get_or_create(Pool* pool)
+State* state_get_or_create(PoolFree* pf)
 {
-    State* s;
-    if (pool_any_free_state(pool)){
-        s = pool_pop_free_state(pool);
-        state_clean_all_except_id(s);
-    } else {
-        s = state_create();
-        state_set_id(s, pool->ID_next);
-        pool->ID_next++;
-    }
-    return s;
+    if (poolfree_any(pf)){
+        CACHO++;
+        return poolfree_pop(pf);
+    } else{
+        CREO++;
+        return state_create();
+    };
 }
 
-void state_clean_all_except_id (State* s)
+void state_clear_all (State* s)
 {
+    assert (s != NULL);
     for (int i = 0; i < STATE_SIZE; i++) {
         (s->arr)[i] = 0;
     }
+    s->id = -1;
     s->slot_node = NULL;
     s->pred = NULL;
+    s->ref_count = 0;
 }
 
 void state_print(State* s)
@@ -72,8 +82,10 @@ void state_print(State* s)
 
 void state_destroy(State* s)
 {   
+    assert (s != NULL);
     free(s->arr);
     free(s);
+    STATE_FREE++;
 }
 
 bool state_is_final (State* s)
@@ -90,6 +102,32 @@ bool state_is_workstation_busy (State* s, int i)
        }
     }
     return false;
+}
+
+bool state_dominates (State* s, State* other)
+{
+    /*
+    se i due stati sono allineati e la posizione dell'AGV è uguale allora s domina se ha tempo minore
+    */
+    if ((s->arr)[T] > (other->arr)[T]) {
+		return false;
+	}
+	//int check_from = max(0, (s->arr)[COUNT_NOT_STARTED]-1);
+	int check_to = J - (s->arr)[COUNT_FINISHED];
+	for (int k = 0; k < check_to; k++) {
+        if (
+            (s->arr)[XK+k] < (other->arr)[XK+k]
+        ) {
+			return false;
+		}
+		if (
+            (s->arr)[XK+k] == (other->arr)[XK+k] && 
+            (s->arr)[EK+k] > (other->arr)[EK+k]
+        ) {
+			return false;
+		}
+	}
+	return true;
 }
 
 void state_set_t(State* s, int value)
@@ -139,6 +177,16 @@ void state_set_count_finished(State* s, int value)
 void state_set_id(State* s, int value)
 {
     s->id = value;
+}
+
+void state_set_pred (State* s, State* other)
+{
+    s->pred = other;
+}
+
+void state_set_ref_count(State* s, int value)
+{
+    s->ref_count = value;
 }
 
 int state_get_t(State* s)
