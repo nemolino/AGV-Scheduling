@@ -161,6 +161,10 @@ typedef struct {
 
     IDs*    ids;
 
+    BitSet**   on;
+    BitSet**   geq;
+    BitSet**   leq;
+
 } Pool;
 
 Pool*   pool_create     (int U);
@@ -180,6 +184,7 @@ State*  pool_pop        (Pool* pool);
 // --- State ------------------------------------------------------------------
 
 extern int J;
+extern int W;
 
 extern int STATE_SIZE;
 extern int T;

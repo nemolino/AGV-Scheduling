@@ -30,11 +30,11 @@ IDs* ids_create()
  */
 void ids_free(IDs* ids)
 {
-    for (int i=0; i < POOL_SIZE; i++){
-        if (ids->id_to_state[i]){
-            state_destroy(ids->id_to_state[i]);
-        }
-    }
+    // for (int i=0; i < POOL_SIZE; i++){
+    //     if (ids->id_to_state[i]){
+    //         state_destroy(ids->id_to_state[i]);
+    //     }
+    // }
     free(ids->id_to_state);
     free(ids->stack);
     free(ids);

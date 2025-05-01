@@ -5,6 +5,7 @@ int STATE_FREE;
 int CREO;
 int CACHO;
 int J;
+int W;
 
 int STATE_SIZE;
 int T;
@@ -21,6 +22,7 @@ void init_globals(Instance* ins)
     CREO = 0;
     CACHO = 0;
     J = ins->J;
+    W = ins->W;
 
     STATE_SIZE = 2+J+J+2;
     T = 0;
