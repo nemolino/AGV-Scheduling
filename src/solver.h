@@ -41,7 +41,13 @@ typedef struct State {
         arr[2+J+J]                  = # not started
         arr[2+J+J+1]                = # finished
     */ 
-    int*            arr;      
+
+    int     t;
+    int     x;
+    int*    xk;
+    int*    ek;
+    int     count_not_started;
+    int     count_finished;
 
     int             id;
     int             idx_in_time_slot;
@@ -121,10 +127,6 @@ State*  ids_get_state_from_id   (IDs* ids, int id);
 // con i bitset il collo di bottiglia non è lo spazio di memoria,
 // posso anche farli di dimensione fissa
 
-// typedef struct {
-//     uint64_t*   arr;
-// } BitSet;
-
 typedef u_int64_t* BitSet;
 
 // per rendere le operazioni più veloci sfrutto il fatto che conosco l'id più grande mai dato
@@ -153,8 +155,8 @@ typedef struct {
     int         cur_slot;
     int         cur_slot_index;
 
-    IDs*    ids;
-    int*    id_container_aligned;
+    IDs*        ids;
+    int*        id_container_aligned;
 
     BitSet**    on;
     BitSet**    geq;
@@ -184,14 +186,6 @@ State*  pool_pop        (Pool* pool);
 extern int J;
 extern int W;
 
-extern int STATE_SIZE;
-extern int T;
-extern int X;
-extern int XK;
-extern int EK;
-extern int COUNT_NOT_STARTED;
-extern int COUNT_FINISHED;
-
 void    init_globals                (Instance* ins);
 State*  state_create                ();
 State*  state_get_or_create         (PoolFree* pf);
@@ -200,27 +194,5 @@ void    state_print                 (State* s);
 void    state_destroy               (State* s);
 bool    state_is_final              (State* s); 
 bool    state_is_workstation_busy   (State* s, int i);
-bool    state_dominates             (State* s, State* other);
-
-//      setters
-void    state_set_t                 (State* s, int value);
-void    state_set_x                 (State* s, int value);
-void    state_set_xk                (State* s, int k, int value);
-void    state_set_xk_all_by_copy    (State* s, State* other);
-void    state_set_ek                (State* s, int k, int value);
-void    state_set_ek_all_by_copy    (State* s, State* other);
-void    state_set_count_not_started (State* s, int value);
-void    state_set_count_finished    (State* s, int value);
-void    state_set_id                (State* s, int value);
-void    state_set_pred              (State* s, State* other);
-void    state_set_ref_count         (State* s, int value);
-
-//      getters
-int     state_get_t                 (State* s);
-int     state_get_x                 (State* s);
-int     state_get_xk                (State* s, int k);
-int     state_get_ek                (State* s, int k);
-int     state_get_count_not_started (State* s);
-int     state_get_count_finished    (State* s);
 
 #endif 

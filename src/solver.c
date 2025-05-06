@@ -19,7 +19,7 @@ void solver_run(Instance* ins)
     PoolFree* poolfree = poolfree_create(); 
 
     State* initial_state = state_get_or_create(poolfree);
-    state_set_count_not_started(initial_state, J);
+    initial_state->count_not_started = J;
     pool_try_push(pool, poolfree, initial_state);
 
     while (!pool_is_empty(pool)){
@@ -31,7 +31,7 @@ void solver_run(Instance* ins)
 
         // se lo stato ha tempo >= UB, la soluzione trivial è ottima
         // perchè estraggo gli stati dal pool in ordine di tempo crescente
-        if (state_get_t(s) >= best_obj_val){
+        if (s->t >= best_obj_val){
             printf("SOLUZIONE OTTIMA TROVATA : stato con tempo >= UB\n");
             poolfree_push_iterative(poolfree, s);
             break;
@@ -40,9 +40,9 @@ void solver_run(Instance* ins)
         // il primo stato finale che raggiungo è la soluzione ottima, 
         // perchè estraggo gli stati dal pool in ordine di tempo crescente
         if (state_is_final(s)){
-            assert (state_get_t(s) < best_obj_val);
+            assert (s->t < best_obj_val);
             printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
-            best_obj_val = state_get_t(s);
+            best_obj_val = s->t;
             best_state = s;
             break;
         }
@@ -50,8 +50,8 @@ void solver_run(Instance* ins)
         int ref_count = 0;
 
         for (
-            int k = J-1-state_get_count_finished(s); 
-            k >= max(0, state_get_count_not_started(s)-1); 
+            int k = J-1-(s->count_finished); 
+            k >= max(0, (s->count_not_started)-1); 
             k--
         ) {
             
@@ -62,7 +62,7 @@ void solver_run(Instance* ins)
 			// 	grazie a k >= max(0, S.countNotStarted-1)
 			// 		mi muovo verso il serbatoio iniziale al massimo 1 volta, cioè ho dest == 0 al massimo 1 volta
 
-            int dest = state_get_xk(s,k);
+            int dest = (s->xk)[k];
 
             // mi muovo solo verso macchine con la dx libera o con a dx il serbatoio finale
 			if (dest+1 != W+1 && state_is_workstation_busy(s, dest+1)) {
@@ -72,58 +72,46 @@ void solver_run(Instance* ins)
             State* s_next = state_get_or_create(poolfree);
 
             // passa il tempo di spostamento
-            state_set_t(s_next, state_get_t(s) + t[state_get_x(s)][dest]);
+            s_next->t = s->t + t[s->x][dest];
             
             // prima di muovere il job bisogna aspettare che la sua lavorazione finisca
-            state_set_t(s_next, max(state_get_t(s_next), state_get_ek(s,k)));
+            s_next->t = max(s_next->t, (s->ek)[k]);
 
             // muovo il job verso la macchina successiva
             // passa il tempo di spostamento
-            state_set_t(s_next, state_get_t(s_next) + t[dest][dest+1]);
-            state_set_x(s_next, dest+1);
+            s_next->t = s_next->t + t[dest][dest+1];
+            s_next->x = dest+1;
 
-            state_set_xk_all_by_copy(s_next, s);
-            state_set_xk(s_next, k, state_get_xk(s_next, k)+1);
-
-            state_set_ek_all_by_copy(s_next, s);
-            if (state_get_x(s_next) == W+1) {
-                state_set_ek(s_next,k,-1);
+            for (int i = 0; i < J; i++) {
+                (s_next->xk)[i] = (s->xk)[i];
+                (s_next->ek)[i] = (s->ek)[i];
+            }
+            (s_next->xk)[k]++;
+            if (s_next->x == W+1) {
+                (s_next->ek)[k] = 1;
 			} else {
-				state_set_ek(s_next,k,state_get_t(s_next)+p[state_get_x(s_next)]);
+                (s_next->ek)[k] = s_next->t + p[s_next->x];
 			}
 
-            state_set_count_not_started(
-                s_next, 
-                (state_get_x(s_next) != 1) ? state_get_count_not_started(s) : state_get_count_not_started(s)-1
-            );
-
-            state_set_count_finished(
-                s_next, 
-                (state_get_x(s_next) != W+1) ? state_get_count_finished(s) : state_get_count_finished(s)+1
-            );
+            s_next->count_not_started = (s_next->x != 1) ? s->count_not_started : s->count_not_started-1;
+            s_next->count_finished = (s_next->x != W+1) ? s->count_finished : s->count_finished+1;
 
             for (int z = 0; z < k; z++) {
-                state_set_ek(
-                    s_next,z,
-                    max(
-                        state_get_ek(s_next,z), 
-                        state_get_t(s_next) + t[state_get_x(s_next)][state_get_xk(s_next,z)]
-                    )
+                (s_next->ek)[z] = max(
+                    (s_next->ek)[z], 
+                    s_next->t + t[s_next->x][(s_next->xk)[z]]
                 );
 			}
-			for (int z = k+1; z < J-state_get_count_finished(s_next); z++) {
-				state_set_ek(
-                    s_next,z,
-                    max(
-                        state_get_ek(s_next,z), 
-                        state_get_t(s_next) + t[state_get_x(s_next)][state_get_xk(s_next,z)]
-                    )
+			for (int z = k+1; z < J-s_next->count_finished; z++) {
+                (s_next->ek)[z] = max(
+                    (s_next->ek)[z], 
+                    s_next->t + t[s_next->x][(s_next->xk)[z]]
                 );
 			}
             
             bool pushed = pool_try_push(pool, poolfree, s_next);
             if (pushed){
-                state_set_pred(s_next, s);
+                s_next->pred = s;
                 ref_count++;
             }else{
                 // s_next è stato appena preso dai free_states o allocato, 
@@ -134,7 +122,7 @@ void solver_run(Instance* ins)
         }
     
         if (ref_count > 0){
-            state_set_ref_count(s, ref_count);
+            s->ref_count = ref_count;
         } else{
             poolfree_push_iterative(poolfree, s);
         }
