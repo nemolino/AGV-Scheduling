@@ -32,8 +32,6 @@ extern int NOT_SAME_X;
 
 extern int LIMIT;
 
-struct Node;
-
 typedef struct State {
     /*
         arr[0]                      = t
@@ -46,35 +44,26 @@ typedef struct State {
     int*            arr;      
 
     int             id;
-    struct Node*    slot_node;
+    int             idx_in_time_slot;
     struct State*   pred;
     int             ref_count;
 } State;
-   
+
 /*****************************************************************************/
 
 /**
- * Node of a Doubly Linked List of states, with pointers to predecessor and successor
- */
-typedef struct Node {
-    State*          s;
-    struct Node*    prev;
-    struct Node*    next;
-} Node;
-
-/**
- * Doubly Linked List of states, with pointers to head and tail
+ * Vector of states
  */
 typedef struct {
-    Node*   head;
-    Node*   tail;
-    int     size;
-} DLL;
+    State** data;
+    size_t  size;
+    size_t  capacity;
+} Vector;
 
-DLL*    dll_create  ();
-void    dll_free    (DLL* dll);
-Node*   dll_insert  (DLL* dll, State* s);
-State*  dll_delete  (DLL* dll, Node* node);
+Vector* vector_create           ();
+void    vector_append           (Vector* vec, State* s);
+void    vector_delete_at_index  (Vector* vec, int idx);
+void    vector_destroy          (Vector *vec);
 
 /*****************************************************************************/
 
@@ -152,8 +141,6 @@ void    bitset_inplace_difference   (BitSet bs, BitSet other);
 bool    bitset_any                  (BitSet bs);
 bool    bitset_none                 (BitSet bs);
 
-//int     bitset_next_set             (BitSet bs, int start_idx); 
-
 /*****************************************************************************/
 
 /**
@@ -161,9 +148,10 @@ bool    bitset_none                 (BitSet bs);
  */
 typedef struct {
 
-    DLL**   time_slots;
-    int     time_slots_len;     // equal to U+1
-    int     cur_slot;
+    Vector**    time_slots;
+    int         time_slots_len;     // equal to U+1
+    int         cur_slot;
+    int         cur_slot_index;
 
     IDs*    ids;
     int*    id_container_aligned;

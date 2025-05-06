@@ -44,7 +44,7 @@ State* state_create()
     State* s = (State*)safe_malloc(sizeof(State));
     s->arr = (int *)safe_calloc(STATE_SIZE, sizeof(int));
     s->id = -1;
-    s->slot_node = NULL;
+    s->idx_in_time_slot = -1;
     s->pred = NULL;
     s->ref_count = 0;
     STATE_ALLOC++;
@@ -69,7 +69,7 @@ void state_clear_all (State* s)
         (s->arr)[i] = 0;
     }
     s->id = -1;
-    s->slot_node = NULL;
+    s->idx_in_time_slot = -1;
     s->pred = NULL;
     s->ref_count = 0;
 }

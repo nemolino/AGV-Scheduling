@@ -3,12 +3,14 @@
 Pool* pool_create(int U)
 {
     Pool* pool = (Pool*)safe_malloc(sizeof(Pool));
-    pool->time_slots = (DLL**)safe_malloc((U+1) * sizeof(DLL*));
-    for (int i=0; i < U+1; i++){
-        pool->time_slots[i] = dll_create();
+
+    pool->time_slots = (Vector**)safe_malloc((U+1) * sizeof(Vector*));
+    for (int i = 0; i < U+1; i++){
+        pool->time_slots[i] = vector_create();
     }
     pool->time_slots_len = U+1;
     pool->cur_slot = 0;
+    pool->cur_slot_index = 0;
 
     pool->ids = ids_create();
     pool->id_container_aligned = (int*)safe_calloc(POOL_SIZE, sizeof(int));
@@ -43,7 +45,7 @@ Pool* pool_create(int U)
 void pool_free(Pool* pool)
 {
     for (int i=0; i < pool->time_slots_len; i++){
-        dll_free(pool->time_slots[i]);
+        vector_destroy(pool->time_slots[i]);
     }
     free(pool->time_slots);
 
@@ -74,12 +76,6 @@ void pool_free(Pool* pool)
 
 bool dominates_aligned(State* s, State* s2)
 {
-    if (state_get_x(s) == state_get_x(s2)){
-        SAME_X++;
-    } else {
-        NOT_SAME_X++;
-    }
-
     if (state_get_x(s) == state_get_x(s2)){
         return state_get_t(s) <= state_get_t(s2);
     }
@@ -206,56 +202,10 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
             offset += 64;
         }
     }
-
-    /*
-    // vedere se lo stato è dominato da uno stato con tempo <= a lui
-    for (int i=(s->arr)[T]; i >= pool->cur_slot; i--){
-        DLL* dll = (pool->time_slots)[i];
-        if (dll->size > 0){
-            Node* cur = dll->head;
-            do {
-                if (state_dominates(cur->s, s)){
-                    // printf("domination\n");
-                    // state_print(cur->s);
-                    // state_print(s);
-                    // printf("\n");
-                    
-                    return false;
-                }
-                cur = cur->next;
-            } while (cur);
-        }
-    }
-    */
     
     // --- checking if s dominates some state in the pool ---------------------
     
-    /*
-    // vedere se lo stato domina qualche stato con tempo >= a lui
-    for (int i=(s->arr)[T]; i < pool->time_slots_len; i++){
-        DLL* dll = (pool->time_slots)[i];
-        if (dll->size > 0){
-            Node* cur = dll->head;
-            Node* next = NULL;
-            do {
-                next = cur->next;
-                if (state_dominates(s,cur->s)){
-                    // printf("elimination\n");
-                    // state_print(s);
-                    // state_print(cur->s);
-                    // printf("\n");
-
-                    State* tmp = dll_delete(dll, (cur->s)->slot_node);
-                    ids_release(pool->ids, tmp);
-                    poolfree_push_iterative(pf, tmp);
-                }
-                cur = next;
-            } while (cur);
-        }
-    }
-    */
-
-	// --- exact alignment check
+    // --- exact alignment check
     
     if (id_container_aligned_len > 0){
         for (int i=0; i < id_container_aligned_len; i++){
@@ -263,11 +213,10 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
             State* dominated = ids_get_state_from_id(pool->ids, id);
             if (dominates_aligned(s,dominated)){
 
-                State* tmp = dll_delete(
+                vector_delete_at_index(
                     pool->time_slots[state_get_t(dominated)], 
-                    dominated->slot_node
+                    dominated->idx_in_time_slot
                 );
-                assert (tmp != NULL);
                 
                 for (int k = 0; k < J; k++) {
                     int k_cur_station = state_get_xk(dominated,k);
@@ -330,11 +279,11 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
                 State* dominated = ids_get_state_from_id(pool->ids, id);
                 if (dominates_aligned(s,dominated)){
 
-                    State* tmp = dll_delete(
+                    vector_delete_at_index(
                         pool->time_slots[state_get_t(dominated)], 
-                        dominated->slot_node
+                        dominated->idx_in_time_slot
                     );
-                    assert (tmp != NULL);
+
                     
                     for (int k = 0; k < J; k++) {
                         int k_cur_station = state_get_xk(dominated,k);
@@ -361,8 +310,10 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
     ids_assign(pool->ids, s);
     assert (s->id >= 0);
 
-    s->slot_node = dll_insert(pool->time_slots[state_get_t(s)], s);
-    
+    Vector* vec = pool->time_slots[state_get_t(s)];
+    vector_append(vec, s);
+    s->idx_in_time_slot = vec->size-1;
+
     for (int k = 0; k < J; k++) {
 		int k_cur_station = state_get_xk(s,k);
         bitset_set_bit((pool->on)[k][k_cur_station], s->id);
@@ -381,10 +332,15 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
 bool pool_is_empty(Pool* pool)
 {
     while (pool->cur_slot < pool->time_slots_len){
-        if (((pool->time_slots)[pool->cur_slot])->size > 0){
-            return false;
+        Vector* vec = pool->time_slots[pool->cur_slot];
+        while (pool->cur_slot_index < vec->size){
+            if (vec->data[pool->cur_slot_index] != NULL){
+                return false;
+            }
+            pool->cur_slot_index++;
         }
         pool->cur_slot++;
+        pool->cur_slot_index = 0;
     }
     return true;
 }
@@ -394,11 +350,15 @@ State* pool_pop(Pool* pool)
 {
     assert(!pool_is_empty(pool));
 
-    State* s = dll_delete(
-        pool->time_slots[pool->cur_slot], 
-        (pool->time_slots[pool->cur_slot])->tail 
+    assert (
+        pool->cur_slot_index >= 0 && 
+        pool->cur_slot_index < pool->time_slots[pool->cur_slot]->size
     );
+    State* s = (pool->time_slots[pool->cur_slot])->data[pool->cur_slot_index];
     assert (s != NULL);
+    (pool->time_slots[pool->cur_slot])->data[pool->cur_slot_index] = NULL;
+    pool->cur_slot_index++;
+
 
     for (int k = 0; k < J; k++) {
 		int k_cur_station = state_get_xk(s,k);

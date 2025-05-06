@@ -9,6 +9,6 @@ int main(void)
     solver_run(ins);
     printf("\n");
     instance_destroy(ins);
-
+    
     return 0;
 }

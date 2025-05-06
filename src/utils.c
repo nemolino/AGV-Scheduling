@@ -24,3 +24,13 @@ void *safe_calloc(size_t __count, size_t __size)
     }
     return ptr;
 }
+
+void *safe_realloc(void *__ptr, size_t __size)
+{
+    void *ptr = realloc(__ptr, __size);
+    if (ptr == NULL) {
+        printf("Memory allocation with realloc failed!\n");
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
+}

@@ -18,14 +18,6 @@ void solver_run(Instance* ins)
     Pool* pool = pool_create(U);
     PoolFree* poolfree = poolfree_create(); 
 
-    // clock_t tic2 = clock();
-    // const int len = 20*20*3;
-    // BitSet bss[len];
-    // for (int i=0; i < len; i++){
-    //     bss[i] = bitset_create();
-    // } 
-    // clock_t toc2 = clock();
-
     State* initial_state = state_get_or_create(poolfree);
     state_set_count_not_started(initial_state, J);
     pool_try_push(pool, poolfree, initial_state);
@@ -158,6 +150,7 @@ void solver_run(Instance* ins)
     } while(cur != NULL);
 
     printf("free ...\n");
+    
     poolfree_push_iterative(poolfree, best_state);
     while (!pool_is_empty(pool)){
         State* s = pool_pop(pool); 
@@ -170,7 +163,6 @@ void solver_run(Instance* ins)
     clock_t toc = clock();
     printf("... solver_run END\n");
     printf("solver_run execution_time = %f s\n", (double)(toc - tic) / CLOCKS_PER_SEC);
-    // printf("bitsets creation execution_time = %f s\n", (double)(toc2 - tic2) / CLOCKS_PER_SEC);
     printf("solver_run z* = %d\n", best_obj_val);
     printf("solver_run state_alloc = %d , state_free = %d\n", STATE_ALLOC, STATE_FREE);
     printf("solver_run CREO = %d , CACHO = %d\n", CREO, CACHO);
