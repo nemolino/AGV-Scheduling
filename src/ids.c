@@ -54,6 +54,7 @@ void ids_assign(IDs* ids, State* s)
         exit(EXIT_FAILURE);
     }
     s->id = ids->stack[ids->stack_top];
+    LIMIT = max(LIMIT, ceil(s->id/64));
     ids->stack_top--;
     ids->id_to_state[s->id] = s;
 }
@@ -69,4 +70,10 @@ void ids_release(IDs* ids, State* s)
     ids->stack_top++;
     ids->stack[ids->stack_top] = s->id;
     ids->id_to_state[s->id] = NULL;
+}
+
+State* ids_get_state_from_id(IDs* ids, int id)
+{
+    assert (ids->id_to_state[id] != NULL);
+    return ids->id_to_state[id];
 }

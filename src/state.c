@@ -4,6 +4,9 @@ int STATE_ALLOC;
 int STATE_FREE;
 int CREO;
 int CACHO;
+int SAME_X;
+int NOT_SAME_X;
+int LIMIT;
 int J;
 int W;
 
@@ -21,6 +24,9 @@ void init_globals(Instance* ins)
     STATE_FREE = 0;
     CREO = 0;
     CACHO = 0;
+    SAME_X = 0;
+    NOT_SAME_X = 0;
+    LIMIT = 0;
     J = ins->J;
     W = ins->W;
 

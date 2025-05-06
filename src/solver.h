@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
@@ -26,6 +27,10 @@ extern int STATE_FREE;
 
 extern int CREO;
 extern int CACHO;
+extern int SAME_X;
+extern int NOT_SAME_X;
+
+extern int LIMIT;
 
 struct Node;
 
@@ -100,10 +105,11 @@ typedef struct {
     State** id_to_state; 
 } IDs;
 
-IDs*    ids_create  ();
-void    ids_free    (IDs* ids);
-void    ids_assign  (IDs* ids, State* s);
-void    ids_release (IDs* ids, State* s);
+IDs*    ids_create              ();
+void    ids_free                (IDs* ids);
+void    ids_assign              (IDs* ids, State* s);
+void    ids_release             (IDs* ids, State* s);
+State*  ids_get_state_from_id   (IDs* ids, int id);
 
 
 /*****************************************************************************/
@@ -160,10 +166,14 @@ typedef struct {
     int     cur_slot;
 
     IDs*    ids;
+    int*    id_container_aligned;
 
-    BitSet**   on;
-    BitSet**   geq;
-    BitSet**   leq;
+    BitSet**    on;
+    BitSet**    geq;
+    BitSet**    leq;
+    BitSet      candidate_aligned;
+    BitSet      candidate_dominators_non_aligned;;
+    BitSet      candidate_dominated_non_aligned;
 
 } Pool;
 

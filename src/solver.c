@@ -174,5 +174,6 @@ void solver_run(Instance* ins)
     printf("solver_run z* = %d\n", best_obj_val);
     printf("solver_run state_alloc = %d , state_free = %d\n", STATE_ALLOC, STATE_FREE);
     printf("solver_run CREO = %d , CACHO = %d\n", CREO, CACHO);
+    printf("solver_run SAME_X = %d , NOT_SAME_X = %d\n", SAME_X, NOT_SAME_X);
 }
 

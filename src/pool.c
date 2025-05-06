@@ -11,6 +11,7 @@ Pool* pool_create(int U)
     pool->cur_slot = 0;
 
     pool->ids = ids_create();
+    pool->id_container_aligned = (int*)safe_calloc(POOL_SIZE, sizeof(int));
 
     // creazione dei bitset
 
@@ -32,6 +33,9 @@ Pool* pool_create(int U)
             (pool->leq)[k][i] = bitset_create();
         }
     }
+    pool->candidate_aligned = bitset_create();
+    pool->candidate_dominators_non_aligned = bitset_create();
+    pool->candidate_dominated_non_aligned = bitset_create();
     
     return pool;
 }
@@ -44,6 +48,7 @@ void pool_free(Pool* pool)
     free(pool->time_slots);
 
     ids_free(pool->ids);
+    free(pool->id_container_aligned);
 
     // bitsets
 
@@ -60,16 +65,150 @@ void pool_free(Pool* pool)
     free(pool->geq);
     free(pool->leq[0]);
     free(pool->leq);
+    bitset_destroy(pool->candidate_aligned);
+    bitset_destroy(pool->candidate_dominators_non_aligned);
+    bitset_destroy(pool->candidate_dominated_non_aligned);
 
     free(pool);
+}
+
+bool dominates_aligned(State* s, State* s2)
+{
+    if (state_get_x(s) == state_get_x(s2)){
+        SAME_X++;
+    } else {
+        NOT_SAME_X++;
+    }
+
+    if (state_get_x(s) == state_get_x(s2)){
+        return state_get_t(s) <= state_get_t(s2);
+    }
+
+    // REQUIRES : i job sono perfettamente allineati
+    int check_from = max(0, state_get_count_not_started(s)-1);
+    int check_to = J - state_get_count_finished(s);
+    for (int k = check_from; k < check_to; k++) {
+        if (state_get_ek(s,k) > state_get_ek(s2,k)) {
+            return false;
+        }
+    }
+    return true;
+} 
+
+bool dominates_non_aligned(State* s, State* s2)
+{
+    // REQUIRES : i job non sono perfettamente allineati
+    if (state_get_t(s) > state_get_t(s2)) {
+        return false;
+    }
+    int check_from = max(0, state_get_count_not_started(s)-1);
+    int check_to = J - state_get_count_finished(s);
+    for (int k = check_from; k < check_to; k++) {
+        if ((state_get_xk(s,k) == state_get_xk(s2,k)) && (state_get_ek(s,k) > state_get_ek(s2,k))) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
 {
     assert (s != NULL);
 
-    // vedere se lo stato è dominato da uno stato con tempo <= a lui
+    // --- checking if some state in the pool dominates s ---------------------
+
+	// --- exact alignment check (si possono diminuire le intersezioni credo)
+
+    bitset_clear_all(pool->candidate_aligned);
+    bitset_copy(
+        pool->candidate_aligned, 
+        (pool->on)[0][state_get_xk(s,0)]
+    );
+    for (int k = 1; k < J; k++) {
+        bitset_inplace_intersection(
+            pool->candidate_aligned, 
+            (pool->on)[k][state_get_xk(s,k)]
+        );
+    }
+
+    int id_container_aligned_len = 0; 
+
+    if (bitset_any(pool->candidate_aligned)){
+        // itero sui bit a 1 di pool->candidate_aligned
+        int offset = 0;
+        //for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
+        for (int i = 0; i < LIMIT; i++) {
+            uint64_t word = pool->candidate_aligned[i];
+            while (word != 0){
+                uint64_t t = word & -word;
+                int id = offset + __builtin_ctzll(word);
+                pool->id_container_aligned[id_container_aligned_len] = id;
+                id_container_aligned_len++;
+                State* dominator = ids_get_state_from_id(pool->ids, id);
+                if (dominates_aligned(dominator,s)){
+                    return false;
+                }
+                word ^= t;
+            }
+            offset += 64;
+        }
+    }
     
+    // --- non-exact alignment check
+
+    bitset_clear_all(pool->candidate_dominators_non_aligned);
+
+    int k;
+    if (state_get_count_finished(s) > 0){
+        bitset_copy(
+            pool->candidate_dominators_non_aligned, 
+            (pool->on)[J-state_get_count_finished(s)][state_get_xk(s,J-state_get_count_finished(s))]
+        );
+        k = J-state_get_count_finished(s)-1;
+    }else{
+        assert (state_get_count_finished(s) == 0);
+        bitset_copy(
+            pool->candidate_dominators_non_aligned, 
+            (pool->geq)[J-1][state_get_xk(s,J-1)]
+        );
+        k = J-2;
+    }
+
+    for (; k >= state_get_count_not_started(s); k--) {
+        bitset_inplace_intersection(
+            pool->candidate_dominators_non_aligned, 
+            (pool->geq)[k][state_get_xk(s,k)]
+        );
+    }
+
+    bitset_inplace_difference(
+        pool->candidate_dominators_non_aligned, 
+        pool->candidate_aligned
+    );
+
+    if (bitset_any(pool->candidate_dominators_non_aligned)){
+        // itero sui bit a 1 di pool->candidate_dominators_non_aligned
+        int offset = 0;
+        //for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
+        for (int i = 0; i < LIMIT; i++) {
+            uint64_t word = pool->candidate_dominators_non_aligned[i];
+            while (word != 0){
+                uint64_t t = word & -word;
+                int id = offset + __builtin_ctzll(word);
+                // pool->id_container_aligned[id_container_aligned_len] = id;
+                // id_container_aligned_len++;
+                State* dominator = ids_get_state_from_id(pool->ids, id);
+                if (dominates_non_aligned(dominator,s)){
+                    return false;
+                }
+                word ^= t;
+            }
+            offset += 64;
+        }
+    }
+
+    /*
+    // vedere se lo stato è dominato da uno stato con tempo <= a lui
     for (int i=(s->arr)[T]; i >= pool->cur_slot; i--){
         DLL* dll = (pool->time_slots)[i];
         if (dll->size > 0){
@@ -87,7 +226,11 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
             } while (cur);
         }
     }
+    */
     
+    // --- checking if s dominates some state in the pool ---------------------
+    
+    /*
     // vedere se lo stato domina qualche stato con tempo >= a lui
     for (int i=(s->arr)[T]; i < pool->time_slots_len; i++){
         DLL* dll = (pool->time_slots)[i];
@@ -110,8 +253,110 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
             } while (cur);
         }
     }
+    */
 
-    // inserisco lo stato
+	// --- exact alignment check
+    
+    if (id_container_aligned_len > 0){
+        for (int i=0; i < id_container_aligned_len; i++){
+            int id = pool->id_container_aligned[i];
+            State* dominated = ids_get_state_from_id(pool->ids, id);
+            if (dominates_aligned(s,dominated)){
+
+                State* tmp = dll_delete(
+                    pool->time_slots[state_get_t(dominated)], 
+                    dominated->slot_node
+                );
+                assert (tmp != NULL);
+                
+                for (int k = 0; k < J; k++) {
+                    int k_cur_station = state_get_xk(dominated,k);
+                    bitset_clear_bit((pool->on)[k][k_cur_station], id);
+                    for (int i = 0; i <= k_cur_station; i++) {
+                        bitset_clear_bit((pool->geq)[k][k_cur_station], id);
+                    }
+                    for (int i = k_cur_station; i <= W+1; i++) {
+                        bitset_clear_bit((pool->leq)[k][k_cur_station], id);
+                    }
+                }
+
+                ids_release(pool->ids, dominated);
+                poolfree_push_iterative(pf, dominated);
+            }
+        }
+    }
+    
+    // --- non-exact alignment check
+
+    bitset_clear_all(pool->candidate_dominated_non_aligned);
+
+    k = 0;
+    if (state_get_count_not_started(s) > 0){
+        bitset_copy(
+            pool->candidate_dominated_non_aligned, 
+            (pool->on)[state_get_count_not_started(s)-1][state_get_xk(s,state_get_count_not_started(s)-1)]
+        );
+        k = state_get_count_not_started(s);
+    }else{
+        assert (state_get_count_not_started(s) == 0);
+        bitset_copy(
+            pool->candidate_dominated_non_aligned, 
+            (pool->leq)[0][state_get_xk(s,0)]
+        );
+        k = 1;
+    }
+
+    for (; k <= J-state_get_count_finished(s)-1; k++) {
+        bitset_inplace_intersection(
+            pool->candidate_dominated_non_aligned, 
+            (pool->leq)[k][state_get_xk(s,k)]
+        );
+    }
+
+    bitset_inplace_difference(
+        pool->candidate_dominated_non_aligned, 
+        pool->candidate_aligned
+    );
+
+    if (bitset_any(pool->candidate_dominated_non_aligned)){
+        // itero sui bit a 1 di pool->candidate_dominated_non_aligned
+        int offset = 0;
+        //for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
+        for (int i = 0; i < LIMIT; i++) {
+            uint64_t word = pool->candidate_dominators_non_aligned[i];
+            while (word != 0){
+                uint64_t t = word & -word;
+                int id = offset + __builtin_ctzll(word);
+                State* dominated = ids_get_state_from_id(pool->ids, id);
+                if (dominates_aligned(s,dominated)){
+
+                    State* tmp = dll_delete(
+                        pool->time_slots[state_get_t(dominated)], 
+                        dominated->slot_node
+                    );
+                    assert (tmp != NULL);
+                    
+                    for (int k = 0; k < J; k++) {
+                        int k_cur_station = state_get_xk(dominated,k);
+                        bitset_clear_bit((pool->on)[k][k_cur_station], id);
+                        for (int i = 0; i <= k_cur_station; i++) {
+                            bitset_clear_bit((pool->geq)[k][k_cur_station], id);
+                        }
+                        for (int i = k_cur_station; i <= W+1; i++) {
+                            bitset_clear_bit((pool->leq)[k][k_cur_station], id);
+                        }
+                    }
+
+                    ids_release(pool->ids, dominated);
+                    poolfree_push_iterative(pf, dominated);
+                }
+                word ^= t;
+            }
+            offset += 64;
+        }
+    }
+
+    // --- inserisco lo stato -------------------------------------------------
 
     ids_assign(pool->ids, s);
     assert (s->id >= 0);

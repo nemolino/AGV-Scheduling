@@ -33,29 +33,33 @@ void bitset_clear_all(BitSet bs)
 
 void bitset_copy(BitSet dest, BitSet src) 
 {
-    for (size_t i = 0; i < BITSET_ARR_LEN; i++){
+    //for (size_t i = 0; i < BITSET_ARR_LEN; i++){
+    for (int i = 0; i < LIMIT; i++) {
         dest[i] = src[i];
     }
 }
 
 void bitset_inplace_intersection(BitSet bs, BitSet other) 
 {
-    for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
+    //for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
+    for (int i = 0; i < LIMIT; i++) {
         bs[i] &= other[i];
     }
 }
 
 void bitset_inplace_difference(BitSet bs, BitSet other) 
 {
-    for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
+    //for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
+    for (int i = 0; i < LIMIT; i++) {
         bs[i] &= ~other[i];
     }
 }
 
 bool bitset_any(BitSet bs) 
 {
-    for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
-        if (bs[i] > 0){
+    //for (size_t i = 0; i < BITSET_ARR_LEN; i++) {
+    for (int i = 0; i < LIMIT; i++) {
+        if (bs[i] > 0ULL){
             return true;
         } 
     }
@@ -66,23 +70,3 @@ bool bitset_none(BitSet bs)
 {
     return !bitset_any(bs);
 }
-
-/*
-
-// Find the next set bit starting from 'start_idx'
-int bitset_next_set(BitSet* bs, int start_idx) {
-    size_t start_word = BITSET_INDEX_OF(start_idx);
-    int offset = BITSET_OFFSET_OF(start_idx);
-
-    for (size_t i = start_word; i < bs.arr_size; i++) {
-        uint64_t word = bs.arr[i];
-        if (i == start_word) {
-            word &= (~0ULL << offset); // Mask out lower bits
-        }
-        if (word) {
-            return i * 64 + __builtin_ctzll(word); // Find the first set bit
-        }
-    }
-    return -1; // No set bit found
-}
-*/
