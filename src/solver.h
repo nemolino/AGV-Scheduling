@@ -127,7 +127,7 @@ State*  ids_get_state_from_id   (IDs* ids, int id);
 // con i bitset il collo di bottiglia non è lo spazio di memoria,
 // posso anche farli di dimensione fissa
 
-typedef u_int64_t* BitSet;
+typedef uint64_t* BitSet;
 
 // per rendere le operazioni più veloci sfrutto il fatto che conosco l'id più grande mai dato
 // -> nessun bitset avrà mai settati dei bit > id 

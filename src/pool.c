@@ -158,7 +158,7 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
     if (s->count_finished > 0){
         bitset_copy(
             pool->candidate_dominators_non_aligned, 
-            (pool->on)[J - s->count_finished][(s->xk)[J-s->count_finished]]
+            (pool->on)[J - s->count_finished][(s->xk)[J - s->count_finished]]
         );
         k = J- s->count_finished-1;
     }else{
@@ -170,7 +170,8 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
         k = J-2;
     }
 
-    for (; k >= s->count_not_started; k--) {
+    //for (; k >= s->count_not_started ; k--) {
+    for (; k >= s->count_not_started && bitset_any(pool->candidate_dominators_non_aligned); k--) {
         bitset_inplace_intersection(
             pool->candidate_dominators_non_aligned, 
             (pool->geq)[k][(s->xk)[k]]
@@ -222,10 +223,10 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
                     int k_cur_station = (dominated->xk)[k];
                     bitset_clear_bit((pool->on)[k][k_cur_station], id);
                     for (int i = 0; i <= k_cur_station; i++) {
-                        bitset_clear_bit((pool->geq)[k][k_cur_station], id);
+                        bitset_clear_bit((pool->geq)[k][i], id);
                     }
                     for (int i = k_cur_station; i <= W+1; i++) {
-                        bitset_clear_bit((pool->leq)[k][k_cur_station], id);
+                        bitset_clear_bit((pool->leq)[k][i], id);
                     }
                 }
 
@@ -255,7 +256,7 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
         k = 1;
     }
 
-    for (; k <= J-s->count_finished-1; k++) {
+    for (; k <= J-s->count_finished-1 && bitset_any(pool->candidate_dominated_non_aligned); k++) {
         bitset_inplace_intersection(
             pool->candidate_dominated_non_aligned, 
             (pool->leq)[k][(s->xk)[k]]
@@ -289,10 +290,10 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
                         int k_cur_station = (dominated->xk)[k];
                         bitset_clear_bit((pool->on)[k][k_cur_station], id);
                         for (int i = 0; i <= k_cur_station; i++) {
-                            bitset_clear_bit((pool->geq)[k][k_cur_station], id);
+                            bitset_clear_bit((pool->geq)[k][i], id);
                         }
                         for (int i = k_cur_station; i <= W+1; i++) {
-                            bitset_clear_bit((pool->leq)[k][k_cur_station], id);
+                            bitset_clear_bit((pool->leq)[k][i], id);
                         }
                     }
 
@@ -318,10 +319,10 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
 		int k_cur_station = (s->xk)[k];
         bitset_set_bit((pool->on)[k][k_cur_station], s->id);
 		for (int i = 0; i <= k_cur_station; i++) {
-            bitset_set_bit((pool->geq)[k][k_cur_station], s->id);
+            bitset_set_bit((pool->geq)[k][i], s->id);
 		}
         for (int i = k_cur_station; i <= W+1; i++) {
-            bitset_set_bit((pool->leq)[k][k_cur_station], s->id);
+            bitset_set_bit((pool->leq)[k][i], s->id);
 		}
 	}
 
@@ -356,7 +357,7 @@ State* pool_pop(Pool* pool)
     );
     State* s = (pool->time_slots[pool->cur_slot])->data[pool->cur_slot_index];
     assert (s != NULL);
-    (pool->time_slots[pool->cur_slot])->data[pool->cur_slot_index] = NULL;
+    (pool->time_slots[pool->cur_slot])->data[pool->cur_slot_index] = NULL; // aggiunta
     pool->cur_slot_index++;
 
 
@@ -364,10 +365,10 @@ State* pool_pop(Pool* pool)
 		int k_cur_station = (s->xk)[k];
         bitset_clear_bit((pool->on)[k][k_cur_station], s->id);
 		for (int i = 0; i <= k_cur_station; i++) {
-            bitset_clear_bit((pool->geq)[k][k_cur_station], s->id);
+            bitset_clear_bit((pool->geq)[k][i], s->id);
 		}
         for (int i = k_cur_station; i <= W+1; i++) {
-            bitset_clear_bit((pool->leq)[k][k_cur_station], s->id);
+            bitset_clear_bit((pool->leq)[k][i], s->id);
 		}
 	}
     

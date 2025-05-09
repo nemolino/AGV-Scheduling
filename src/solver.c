@@ -22,9 +22,12 @@ void solver_run(Instance* ins)
     initial_state->count_not_started = J;
     pool_try_push(pool, poolfree, initial_state);
 
+    int count = 0;
     while (!pool_is_empty(pool)){
 
         State* s = pool_pop(pool); 
+        count++;
+
 
         // printf("popped state : ");
         // state_print(s);
@@ -88,7 +91,7 @@ void solver_run(Instance* ins)
             }
             (s_next->xk)[k]++;
             if (s_next->x == W+1) {
-                (s_next->ek)[k] = 1;
+                (s_next->ek)[k] = -1;
 			} else {
                 (s_next->ek)[k] = s_next->t + p[s_next->x];
 			}
@@ -130,12 +133,14 @@ void solver_run(Instance* ins)
 
     printf("fine LOOP...\n");
 
+    /*
     printf("stampa sol ottima...\n");
     State* cur = best_state;
     do {
         state_print(cur);
         cur = cur->pred;
     } while(cur != NULL);
+    */
 
     printf("free ...\n");
     
@@ -146,7 +151,6 @@ void solver_run(Instance* ins)
     }
     poolfree_free(poolfree);
     pool_free(pool);
-
     
     clock_t toc = clock();
     printf("... solver_run END\n");
@@ -154,6 +158,7 @@ void solver_run(Instance* ins)
     printf("solver_run z* = %d\n", best_obj_val);
     printf("solver_run state_alloc = %d , state_free = %d\n", STATE_ALLOC, STATE_FREE);
     printf("solver_run CREO = %d , CACHO = %d\n", CREO, CACHO);
-    printf("solver_run SAME_X = %d , NOT_SAME_X = %d\n", SAME_X, NOT_SAME_X);
+    printf("solver_run LIMIT = %d\n", LIMIT);
+    printf("solver_run count = %d\n", count);
 }
 
