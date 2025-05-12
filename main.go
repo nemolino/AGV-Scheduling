@@ -45,13 +45,13 @@ func main() {
 	// }
 
 	ins := instance.NewInstanceFromFile(
-		"./dataset_J_equals_M/J_12_M_12_r_2.1_seed_00.dat",
+		"./dataset_J_equals_M/J_14_M_14_r_2.1_seed_00.dat",
 	)
 
 	fmt.Println(ins.UB, "UB")
 	fmt.Println()
 
-	r2 := solverDP2.Solve(ins, utils.InstanceType{J: 12, M: 12, R: 2.1})
+	r2 := solverDP2.Solve(ins, utils.InstanceType{J: 14, M: 14, R: 2.1})
 	r2.Print("solverDP2", false)
 
 	// fixedMExperiment()

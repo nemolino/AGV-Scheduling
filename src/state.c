@@ -2,10 +2,6 @@
 
 int STATE_ALLOC;
 int STATE_FREE;
-int CREO;
-int CACHO;
-int SAME_X;
-int NOT_SAME_X;
 int LIMIT;
 int J;
 int W;
@@ -14,23 +10,25 @@ void init_globals(Instance* ins)
 {
     STATE_ALLOC = 0;
     STATE_FREE = 0;
-    CREO = 0;
-    CACHO = 0;
-    SAME_X = 0;
-    NOT_SAME_X = 0;
     LIMIT = 0;
     J = ins->J;
     W = ins->W;
 }
 
-State* state_create()
+State* state_create(StateAllocator* a)
 {
-    State* s = (State*)safe_malloc(sizeof(State));
+    State* s = state_allocator_get(a); //(State*)safe_malloc(sizeof(State));
 
     s->t = 0;
     s->x = 0;
-    s->xk = (int *)safe_calloc(2*J, sizeof(int));
-    s->ek = s->xk + J;
+
+    // s->xk = (int *)safe_calloc(2*J, sizeof(int));
+    // s->ek = s->xk + J;
+    for (int k=0; k < J; k++){
+        s->xk[k] = 0;
+        s->ek[k] = 0;
+    }
+
     s->count_not_started = 0;
     s->count_finished = 0;
 
@@ -38,11 +36,11 @@ State* state_create()
     s->idx_in_time_slot = -1;
     s->pred = NULL;
     s->ref_count = 0;
-
-    STATE_ALLOC++;
+    
     return s;
 }
 
+/*
 State* state_get_or_create(PoolFree* pf)
 {
     if (poolfree_any(pf)){
@@ -72,6 +70,7 @@ void state_clear_all (State* s)
     s->pred = NULL;
     s->ref_count = 0;
 }
+*/
 
 void state_print(State* s)
 {
@@ -87,13 +86,14 @@ void state_print(State* s)
     printf(" |  pred : %p\n", s->pred);
 }
 
-void state_destroy(State* s)
+void state_destroy(StateAllocator* a, State* s)
 {   
-    safe_free(s->xk);
-    s->xk = NULL;
-    safe_free(s);
-    s = NULL;
-    STATE_FREE++;
+    state_allocator_release(a,s);
+    // safe_free(s->xk);
+    // s->xk = NULL;
+    // safe_free(s);
+    // s = NULL;
+    // STATE_FREE++;
 }
 
 bool state_is_final (State* s)
@@ -112,28 +112,29 @@ bool state_is_workstation_busy (State* s, int i)
     return false;
 }
 
-// bool state_dominates (State* s, State* other)
-// {
-//     /*
-//     se i due stati sono allineati e la posizione dell'AGV è uguale allora s domina se ha tempo minore
-//     */
-//     if ((s->arr)[T] > (other->arr)[T]) {
-// 		return false;
-// 	}
-// 	//int check_from = max(0, (s->arr)[COUNT_NOT_STARTED]-1);
-// 	int check_to = J - (s->arr)[COUNT_FINISHED];
-// 	for (int k = 0; k < check_to; k++) {
-//         if (
-//             (s->arr)[XK+k] < (other->arr)[XK+k]
-//         ) {
-// 			return false;
-// 		}
-// 		if (
-//             (s->arr)[XK+k] == (other->arr)[XK+k] && 
-//             (s->arr)[EK+k] > (other->arr)[EK+k]
-//         ) {
-// 			return false;
-// 		}
-// 	}
-// 	return true;
-// }
+/*
+bool state_dominates (State* s, State* other)
+{
+    //se i due stati sono allineati e la posizione dell'AGV è uguale allora s domina se ha tempo minore
+    
+    if ((s->arr)[T] > (other->arr)[T]) {
+		return false;
+	}
+	//int check_from = max(0, (s->arr)[COUNT_NOT_STARTED]-1);
+	int check_to = J - (s->arr)[COUNT_FINISHED];
+	for (int k = 0; k < check_to; k++) {
+        if (
+            (s->arr)[XK+k] < (other->arr)[XK+k]
+        ) {
+			return false;
+		}
+		if (
+            (s->arr)[XK+k] == (other->arr)[XK+k] && 
+            (s->arr)[EK+k] > (other->arr)[EK+k]
+        ) {
+			return false;
+		}
+	}
+	return true;
+}
+*/

@@ -2,8 +2,6 @@
     
 void solver_run(Instance* ins)
 {
-    clock_t tic = clock();
-    printf("... solver_run START\n");
 
     int J = ins->J;
     int W = ins->W;
@@ -12,15 +10,21 @@ void solver_run(Instance* ins)
     int** t = ins->t;
     init_globals(ins);
 
+    StateAllocator *allocator = state_allocator_create();
+
+    clock_t tic = clock();
+    printf("... solver_run START\n");
+
     int best_obj_val = U;
     State* best_state = NULL;
 
     Pool* pool = pool_create(U);
-    PoolFree* poolfree = poolfree_create(); 
 
-    State* initial_state = state_get_or_create(poolfree);
+    
+
+    State* initial_state = state_create(allocator);
     initial_state->count_not_started = J;
-    pool_try_push(pool, poolfree, initial_state);
+    pool_try_push(pool, allocator, initial_state);
 
     int count = 0;
     while (!pool_is_empty(pool)){
@@ -28,22 +32,13 @@ void solver_run(Instance* ins)
         State* s = pool_pop(pool); 
         count++;
 
-
         // printf("popped state : ");
         // state_print(s);
-
-        // se lo stato ha tempo >= UB, la soluzione trivial è ottima
-        // perchè estraggo gli stati dal pool in ordine di tempo crescente
-        if (s->t >= best_obj_val){
-            printf("SOLUZIONE OTTIMA TROVATA : stato con tempo >= UB\n");
-            poolfree_push_iterative(poolfree, s);
-            break;
-        }
         
         // il primo stato finale che raggiungo è la soluzione ottima, 
         // perchè estraggo gli stati dal pool in ordine di tempo crescente
         if (state_is_final(s)){
-            assert (s->t < best_obj_val);
+            assert (s->t <= best_obj_val);
             printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
             best_obj_val = s->t;
             best_state = s;
@@ -72,7 +67,7 @@ void solver_run(Instance* ins)
 				continue;
 			}
 
-            State* s_next = state_get_or_create(poolfree);
+            State* s_next = state_create(allocator);//state_get_or_create(poolfree);
 
             // passa il tempo di spostamento
             s_next->t = s->t + t[s->x][dest];
@@ -90,11 +85,7 @@ void solver_run(Instance* ins)
                 (s_next->ek)[i] = (s->ek)[i];
             }
             (s_next->xk)[k]++;
-            if (s_next->x == W+1) {
-                (s_next->ek)[k] = -1;
-			} else {
-                (s_next->ek)[k] = s_next->t + p[s_next->x];
-			}
+            (s_next->ek)[k] = (s_next->x == W+1) ? -1 : s_next->t + p[s_next->x];
 
             s_next->count_not_started = (s_next->x != 1) ? s->count_not_started : s->count_not_started-1;
             s_next->count_finished = (s_next->x != W+1) ? s->count_finished : s->count_finished+1;
@@ -112,53 +103,75 @@ void solver_run(Instance* ins)
                 );
 			}
             
-            bool pushed = pool_try_push(pool, poolfree, s_next);
+            bool pushed = pool_try_push(pool, allocator, s_next);
             if (pushed){
                 s_next->pred = s;
                 ref_count++;
-            }else{
-                // s_next è stato appena preso dai free_states o allocato, 
-                // deve dunque avere ref_count == 0.
-                // non lo facciamo in modo ricorsivo perchè il reference count di s non è ancora aggiornato
-                poolfree_push(poolfree, s_next);
+            } else{
+                state_destroy(allocator, s_next);
             }
         }
     
         if (ref_count > 0){
             s->ref_count = ref_count;
         } else{
-            poolfree_push_iterative(poolfree, s);
+            State* cur = s;
+            State* pred = NULL;
+            do {
+                pred = cur->pred;
+                state_destroy(allocator, cur);
+                assert (pred != NULL);
+                cur = pred;
+                cur->ref_count--;
+            } while (cur->ref_count == 0);
         }
     }
 
     printf("fine LOOP...\n");
 
-    /*
-    printf("stampa sol ottima...\n");
-    State* cur = best_state;
-    do {
-        state_print(cur);
-        cur = cur->pred;
-    } while(cur != NULL);
-    */
+    // printf("stampa sol ottima...\n");
+    // State* cur = best_state;
+    // do {
+    //     state_print(cur);
+    //     cur = cur->pred;
+    // } while(cur != NULL);
 
     printf("free ...\n");
     
-    poolfree_push_iterative(poolfree, best_state);
     while (!pool_is_empty(pool)){
-        State* s = pool_pop(pool); 
-        poolfree_push_iterative(poolfree, s);
+        State* cur = pool_pop(pool);
+        State* pred = NULL;
+        do {
+            pred = cur->pred;
+            state_destroy(allocator, cur);
+            assert (pred != NULL);
+            cur = pred;
+            cur->ref_count--;
+        } while (cur->ref_count == 0);
     }
-    poolfree_free(poolfree);
-    pool_free(pool);
+
+    State* cur = best_state;
+    State* pred = NULL;
+    do {
+        pred = cur->pred;
+        state_destroy(allocator, cur);
+        if (pred == NULL)
+            break;
+        cur = pred;
+        cur->ref_count--;
+    } while (cur->ref_count == 0);
     
+    pool_free(pool, allocator);
     clock_t toc = clock();
+
+
+    printf("solver_run count = %d \n", allocator->count);
+    state_allocator_destroy(allocator);
+    
+    
     printf("... solver_run END\n");
     printf("solver_run execution_time = %f s\n", (double)(toc - tic) / CLOCKS_PER_SEC);
     printf("solver_run z* = %d\n", best_obj_val);
-    printf("solver_run state_alloc = %d , state_free = %d\n", STATE_ALLOC, STATE_FREE);
-    printf("solver_run CREO = %d , CACHO = %d\n", CREO, CACHO);
     printf("solver_run LIMIT = %d\n", LIMIT);
-    printf("solver_run count = %d\n", count);
 }
 

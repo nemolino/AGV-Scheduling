@@ -42,10 +42,10 @@ Pool* pool_create(int U)
     return pool;
 }
 
-void pool_free(Pool* pool)
+void pool_free(Pool* pool, StateAllocator* a)
 {
     for (int i=0; i < pool->time_slots_len; i++){
-        vector_destroy(pool->time_slots[i]);
+        vector_destroy(pool->time_slots[i], a);
     }
     free(pool->time_slots);
 
@@ -107,7 +107,8 @@ bool dominates_non_aligned(State* s, State* s2)
     return true;
 }
 
-bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
+// bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
+bool pool_try_push(Pool* pool, StateAllocator* a, State* s)
 {
     assert (s != NULL);
 
@@ -231,7 +232,16 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
                 }
 
                 ids_release(pool->ids, dominated);
-                poolfree_push_iterative(pf, dominated);
+                //poolfree_push_iterative(pf, dominated);
+                State* cur = dominated;
+                State* pred = NULL;
+                do {
+                    pred = cur->pred;
+                    state_destroy(a, cur);
+                    assert (pred != NULL);
+                    cur = pred;
+                    cur->ref_count--;
+                } while (cur->ref_count == 0);
             }
         }
     }
@@ -298,7 +308,16 @@ bool pool_try_push(Pool* pool, PoolFree* pf, State* s)
                     }
 
                     ids_release(pool->ids, dominated);
-                    poolfree_push_iterative(pf, dominated);
+                    //poolfree_push_iterative(pf, dominated);
+                    State* cur = dominated;
+                    State* pred = NULL;
+                    do {
+                        pred = cur->pred;
+                        state_destroy(a, cur);
+                        assert (pred != NULL);
+                        cur = pred;
+                        cur->ref_count--;
+                    } while (cur->ref_count == 0);
                 }
                 word ^= t;
             }

@@ -3,7 +3,7 @@
 
 int main(void) 
 {
-    Instance* ins = instance_create("../dataset_J_equals_M/J_12_M_12_r_2.1_seed_00.dat");
+    Instance* ins = instance_create("../dataset_J_equals_M/J_14_M_14_r_2.1_seed_00.dat");
     instance_print(ins);
     printf("\n");
     solver_run(ins);
