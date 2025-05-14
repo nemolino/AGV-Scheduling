@@ -9,7 +9,7 @@ StateAllocator* state_allocator_create()
     a->memory_xk_ek_ptrs = (int*)safe_calloc(SIZE * 2*J, sizeof(int));
     for (int i=0; i < SIZE; i++){
         (a->memory_state_ptrs)[i].xk = a->memory_xk_ek_ptrs + i*2*J;
-        (a->memory_state_ptrs)[i].ek = a->memory_xk_ek_ptrs + i*2*J + J;
+        (a->memory_state_ptrs)[i].ek = (a->memory_state_ptrs)[i].xk + J;
     }
     a->offset = a->memory_state_ptrs;
     a->released_memory_state_ptrs = (State**)safe_malloc(SIZE * sizeof(State*));
@@ -26,14 +26,11 @@ void state_allocator_destroy(StateAllocator* a)
 {
     safe_free(a->memory_state_ptrs);
     a->memory_state_ptrs = NULL;
-
     safe_free(a->memory_xk_ek_ptrs);
     a->memory_xk_ek_ptrs = NULL;
-
     safe_free(a->released_memory_state_ptrs);
     a->released_memory_state_ptrs = NULL;
-
-    free(a);
+    safe_free(a);
     a = NULL;
 }
 
@@ -54,7 +51,7 @@ State* state_allocator_get(StateAllocator* a)
 
 void state_allocator_release(StateAllocator* a, State* s)
 {
+    assert (a->released_cur_size < SIZE);
     a->released_memory_state_ptrs[a->released_cur_size] = s;
     a->released_cur_size++;
-    assert (a->released_cur_size <= SIZE);
 }

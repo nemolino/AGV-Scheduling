@@ -61,10 +61,14 @@ void instance_print(Instance* ins)
 
 void instance_destroy(Instance* ins)
 {   
-    free(ins->p);
-    free((ins->t)[0]);
-    free(ins->t);
-    free(ins);
+    safe_free(ins->p);
+    ins->p = NULL;
+    safe_free(ins->t[0]);
+    ins->t[0] = NULL;
+    safe_free(ins->t);
+    ins->t = NULL;
+    safe_free(ins);
+    ins = NULL;
 }
 
 void instance_init_U(Instance* ins)

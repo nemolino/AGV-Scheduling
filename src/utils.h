@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int max(int x, int y);
+int max (int x, int y);
 
 void *safe_malloc   (size_t __size);
 void *safe_calloc   (size_t __count, size_t __size);

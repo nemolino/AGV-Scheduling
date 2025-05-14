@@ -1,19 +1,5 @@
 #include "solver.h"
 
-int STATE_ALLOC;
-int STATE_FREE;
-int LIMIT;
-int J;
-int W;
-
-void init_globals(Instance* ins)
-{
-    STATE_ALLOC = 0;
-    STATE_FREE = 0;
-    LIMIT = 0;
-    J = ins->J;
-    W = ins->W;
-}
 
 State* state_create(StateAllocator* a)
 {
@@ -89,11 +75,13 @@ void state_print(State* s)
 void state_destroy(StateAllocator* a, State* s)
 {   
     state_allocator_release(a,s);
-    // safe_free(s->xk);
-    // s->xk = NULL;
-    // safe_free(s);
-    // s = NULL;
-    // STATE_FREE++;
+    /*
+    safe_free(s->xk);
+    s->xk = NULL;
+    safe_free(s);
+    s = NULL;
+    STATE_FREE++;
+    */
 }
 
 bool state_is_final (State* s)
@@ -112,29 +100,20 @@ bool state_is_workstation_busy (State* s, int i)
     return false;
 }
 
-/*
 bool state_dominates (State* s, State* other)
 {
-    //se i due stati sono allineati e la posizione dell'AGV è uguale allora s domina se ha tempo minore
-    
-    if ((s->arr)[T] > (other->arr)[T]) {
-		return false;
-	}
-	//int check_from = max(0, (s->arr)[COUNT_NOT_STARTED]-1);
-	int check_to = J - (s->arr)[COUNT_FINISHED];
+    bool time_condition = (s->t > other->t);
+
+	int check_to = J - s->count_finished;
 	for (int k = 0; k < check_to; k++) {
-        if (
-            (s->arr)[XK+k] < (other->arr)[XK+k]
-        ) {
+
+        if ((s->xk)[k] < (other->xk)[k]) 
+            return false;
+		
+        bool cond1 = (s->xk)[k] > (other->xk)[k] && time_condition;
+        bool cond2 = (s->xk)[k] == (other->xk)[k] && (s->ek)[k] > (other->ek)[k];
+		if (cond1 || cond2)
 			return false;
-		}
-		if (
-            (s->arr)[XK+k] == (other->arr)[XK+k] && 
-            (s->arr)[EK+k] > (other->arr)[EK+k]
-        ) {
-			return false;
-		}
 	}
 	return true;
 }
-*/

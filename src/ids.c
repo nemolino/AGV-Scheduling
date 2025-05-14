@@ -1,10 +1,5 @@
 #include "solver.h"
 
-/**
- * @brief allocates an empty IDs
- * 
- * @return IDs* 
- */
 IDs* ids_create()
 {
     IDs* ids = (IDs*)safe_malloc(sizeof(IDs));
@@ -23,30 +18,23 @@ IDs* ids_create()
     return ids;
 }
 
-/**
- * @brief de-allocates ids and all the states that it contains
- * 
- * @param ids
- */
 void ids_free(IDs* ids)
 {
-    // for (int i=0; i < POOL_SIZE; i++){
-    //     if (ids->id_to_state[i]){
-    //         state_destroy(ids->id_to_state[i]);
-    //     }
-    // }
-    free(ids->id_to_state);
-    free(ids->stack);
-    free(ids);
+    /*
+    for (int i=0; i < POOL_SIZE; i++){
+        if (ids->id_to_state[i]){
+            state_destroy(ids->id_to_state[i]);
+        }
+    }
+    */
+    safe_free(ids->id_to_state);
+    ids->id_to_state = NULL;
+    safe_free(ids->stack);
+    ids->stack = NULL;
+    safe_free(ids);
+    ids = NULL;
 }
 
-/**
- * @brief assigns an available id to s
- * 
- * @param ids 
- * @param s 
- * @throw error if there are no available ids
- */
 void ids_assign(IDs* ids, State* s)
 {
     if (ids->stack_top < 0){
@@ -54,17 +42,13 @@ void ids_assign(IDs* ids, State* s)
         exit(EXIT_FAILURE);
     }
     s->id = ids->stack[ids->stack_top];
-    LIMIT = max(LIMIT, ceil(s->id/64));
     ids->stack_top--;
     ids->id_to_state[s->id] = s;
+
+    LIMIT = max(LIMIT, ceil(s->id/64)+1);
+    assert (LIMIT <= BITSET_ARR_LEN);
 }
 
-/**
- * @brief releases the id of s
- * 
- * @param ids 
- * @param s 
- */
 void ids_release(IDs* ids, State* s)
 {
     ids->stack_top++;

@@ -21,29 +21,17 @@ void solver_run (Instance* ins);
 
 // --- private ----------------------------------------------------------------
 
-// errori di double free in agguato
-extern int STATE_ALLOC;
-extern int STATE_FREE;
-
-extern int SAME_X;
-extern int NOT_SAME_X;
-
+// global variables
 extern int LIMIT;
+extern int J;
+extern int W;
 
 typedef struct State {
-    /*
-        arr[0]                      = t
-        arr[1]                      = x
-        arr[2] ... arr[2+J-1]       = xk
-        arr[2+J] ... arr[2+J+J-1]   = ek
-        arr[2+J+J]                  = # not started
-        arr[2+J+J+1]                = # finished
-    */ 
-
+    
     int     t;
     int     x;
-    int*    xk;
-    int*    ek;
+    int*    xk; // array of length J
+    int*    ek; // array of length J
     int     count_not_started;
     int     count_finished;
 
@@ -51,11 +39,11 @@ typedef struct State {
     int             idx_in_time_slot;
     struct State*   pred;
     int             ref_count;
+
 } State;
 
-/*****************************************************************************/
-
 typedef struct {
+
     State*  memory_state_ptrs;
     int*    memory_xk_ek_ptrs;
     State*  offset;
@@ -66,11 +54,19 @@ typedef struct {
 
 } StateAllocator;
 
+
+State*  state_create                (StateAllocator* a);
+void    state_print                 (State* s);
+void    state_destroy               (StateAllocator* a, State* s);
+bool    state_is_final              (State* s); 
+bool    state_is_workstation_busy   (State* s, int i);
+bool    state_dominates             (State* s, State* other);
+
+
 StateAllocator* state_allocator_create  ();
 void            state_allocator_destroy (StateAllocator* a);
 State*          state_allocator_get     (StateAllocator* a);
 void            state_allocator_release (StateAllocator* a, State* s);
-
 
 /*****************************************************************************/
 
@@ -86,25 +82,7 @@ typedef struct {
 Vector* vector_create           ();
 void    vector_append           (Vector* vec, State* s);
 void    vector_delete_at_index  (Vector* vec, int idx);
-void    vector_destroy          (Vector *vec, StateAllocator* a);
-
-/*****************************************************************************/
-
-/**
- * A stack of free states, implemented with an array and having max size = POOL_SIZE
- */
-// typedef struct {
-//     State** free_states; 
-//     int     free_states_size;
-// } PoolFree;
-
-
-// PoolFree*   poolfree_create         ();
-// void        poolfree_free           (PoolFree* pf);
-// bool        poolfree_any            (PoolFree* pf);
-// void        poolfree_push           (PoolFree* pf, State* s);
-// void        poolfree_push_iterative (PoolFree* pf, State* s);
-// State*      poolfree_pop            (PoolFree* pf);
+void    vector_destroy          (Vector *vec);
 
 /*****************************************************************************/
 
@@ -122,7 +100,6 @@ void    ids_free                (IDs* ids);
 void    ids_assign              (IDs* ids, State* s);
 void    ids_release             (IDs* ids, State* s);
 State*  ids_get_state_from_id   (IDs* ids, int id);
-
 
 /*****************************************************************************/
 
@@ -158,7 +135,6 @@ void    bitset_copy                 (BitSet dest, BitSet src);
 void    bitset_inplace_intersection (BitSet bs, BitSet other);
 void    bitset_inplace_difference   (BitSet bs, BitSet other);
 bool    bitset_any                  (BitSet bs);
-bool    bitset_none                 (BitSet bs);
 
 /*****************************************************************************/
 
@@ -185,33 +161,9 @@ typedef struct {
 } Pool;
 
 Pool*   pool_create     (int U);
-
 void    pool_free       (Pool* pool, StateAllocator* a);
-
-// action:      se s è non dominato, aggiunge s al pool degli stati e ritorna true
-//              se s è dominato, ritorna false
-//bool    pool_try_push   (Pool* pool, PoolFree* pf, State* s);
 bool    pool_try_push   (Pool* pool, StateAllocator* a, State* s);
-
 bool    pool_is_empty   (Pool* pool);
-
-// require: pool is not empty  
-State*  pool_pop        (Pool* pool);
-
-
-// --- State ------------------------------------------------------------------
-
-extern int J;
-extern int W;
-
-void    init_globals                (Instance* ins);
-State*  state_create                (StateAllocator* a);
-void    state_print                 (State* s);
-void    state_destroy               (StateAllocator* a, State* s);
-bool    state_is_final              (State* s); 
-bool    state_is_workstation_busy   (State* s, int i);
-
-// State*  state_get_or_create         (PoolFree* pf);
-// void    state_clear_all             (State* s);
+State*  pool_pop        (Pool* pool); // require: pool is not empty  
 
 #endif 

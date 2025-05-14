@@ -32,15 +32,19 @@ void vector_delete_at_index(Vector* vec, int idx)
     vec->data[idx] = NULL;
 }
 
-void vector_destroy(Vector *vec, StateAllocator* a) 
+void vector_destroy(Vector *vec) 
 {
     if (vec->data != NULL){
+        /*
         for (int i = 0; i < vec->size; i++){
             if (vec->data[i] != NULL){
                 state_destroy(a, vec->data[i]);
             }
         }
+        */
         free(vec->data);
+        vec->data = NULL;
     }
     free(vec);
+    vec = NULL;
 }
