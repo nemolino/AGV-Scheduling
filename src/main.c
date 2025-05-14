@@ -14,10 +14,13 @@ int main(void)
                 sprintf(filename, "../dataset_J_equals_M/J_%02d_M_%02d_r_%.1f_seed_%02d.dat", jm, jm, r[r_idx], seed);
                 printf("%s\n", filename);
                 Instance* ins = instance_create(filename);
+                printf("trivial_UB = %d\n", ins->U);
                 // instance_print(ins);
                 // printf("\n");
-                solver_run(ins);
-                printf("\n");
+                for (int e=1; e <= ins->max_number_of_extensions; e++){
+                    solver_run(ins,e);
+                    printf("\n");
+                }
                 instance_destroy(ins);
             } 
         }

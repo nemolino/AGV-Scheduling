@@ -17,7 +17,8 @@
 
 // --- public -----------------------------------------------------------------
 
-void solver_run (Instance* ins);
+//void solver_run (Instance* ins);
+void solver_run (Instance* ins, int extensions_threshold);
 
 // --- private ----------------------------------------------------------------
 
@@ -165,5 +166,26 @@ void    pool_free       (Pool* pool, StateAllocator* a);
 bool    pool_try_push   (Pool* pool, StateAllocator* a, State* s);
 bool    pool_is_empty   (Pool* pool);
 State*  pool_pop        (Pool* pool); // require: pool is not empty  
+
+/*****************************************************************************/
+
+typedef struct {
+
+    int     extensions_max;
+    int     extensions_threshold;
+
+    int*    k;
+    int*    k_times;
+    int     k_cur_size;
+
+    int*    best_k;
+    int     best_k_cur_size;
+} HeuristicExtension;
+
+HeuristicExtension* heuristic_extension_create          (int extensions_max, int extensions_threshold);
+void    heuristic_extension_destroy                     (HeuristicExtension* he);
+void    heuristic_extension_clear                       (HeuristicExtension* he);
+void    heuristic_extension_add                         (HeuristicExtension* he, int k, int time);
+void    heuristic_extension_calculate_best_extensions   (HeuristicExtension* he);
 
 #endif 

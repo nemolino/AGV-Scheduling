@@ -5,6 +5,11 @@ int max(int x, int y)
     return (x >= y) ? x : y;
 }
 
+int min(int x, int y) 
+{
+    return (x <= y) ? x : y;
+}
+
 void *safe_malloc(size_t __size)
 {
     void *ptr = malloc(__size);

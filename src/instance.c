@@ -33,6 +33,7 @@ Instance* instance_create(char* file_path)
     
     fclose(fp);
 
+    ins->max_number_of_extensions = ins->W/2+1;
     instance_init_U(ins);
 
     return ins;

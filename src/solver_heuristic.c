@@ -3,15 +3,34 @@
 int LIMIT;
 int J;
 int W;
-    
-void solver_run(Instance* ins)
+
+void print_optimal_solution (State* best_state)
 {
+    printf("print_optimal_solution ...\n");
+    State* cur = best_state;
+    do {
+        state_print(cur);
+        cur = cur->pred;
+    } while(cur != NULL);
+}
+
+void solver_run (Instance* ins, int extensions_threshold)
+{
+    assert (extensions_threshold >= 1 && extensions_threshold <= ins->max_number_of_extensions);
+    printf("solver_run e = %d\n", extensions_threshold);
+
     // global variables
     J = ins->J;
     W = ins->W;
-    LIMIT = 0;
+    LIMIT = 0;    
+
+    int* count_number_of_extensions = (int*)safe_calloc(ins->max_number_of_extensions+1, sizeof(int));
+
+    HeuristicExtension* he = heuristic_extension_create(
+        ins->max_number_of_extensions, extensions_threshold
+    );
     
-    StateAllocator *allocator = state_allocator_create();
+    StateAllocator* allocator = state_allocator_create();
 
     clock_t tic = clock();
 
@@ -35,20 +54,16 @@ void solver_run(Instance* ins)
         // perchè estraggo gli stati dal pool in ordine di tempo crescente
         if (state_is_final(s)){
             assert (s->t <= best_obj_val);
-            printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
+            //printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
             best_obj_val = s->t;
             best_state = s;
             break;
         }
-        
-        int ref_count = 0;
 
-        for (
-            int k = J-1-(s->count_finished); 
-            k >= max(0, s->count_not_started-1); 
-            k--
-        ) {
-            
+        heuristic_extension_clear(he);
+        
+        for (int k = J-1-(s->count_finished); k >= max(0, s->count_not_started-1); k--) {
+
             // trying to move towards job k
 
             //	grazie a k := J - 1 - S.countFinished :
@@ -60,23 +75,32 @@ void solver_run(Instance* ins)
 
             // mi muovo solo verso macchine con la dx libera o con a dx il serbatoio finale
 			if (dest+1 != W+1 && state_is_workstation_busy(s, dest+1)) {
-
-                // idea per un'euristica: rafforzare questa condizione.
-                // se tagliamo destinazioni possibili, allora potenzialmente tagliamo il path verso l'ottimo
-                // (a meno che in qualche modo non dimostriamo non siano ottimali).
-                // comunque, se scegliamo sempre almeno una destinazione possibile, a una soluzione feasible si arriva per forza.
-                // il gioco è cercare di tagliare destinazioni feasible in modo euristico.
-                // se taglio solo destinazioni dominate, non perdo l'ottimalità.
-                // se taglio anche destinazioni non dominate, potrei perdere l'ottimalità.
-                
-                // TODO trovare criteri di taglio sensati. 
-                // es. vado solo verso le migliori k postazioni per minimo tempo di spostamento.
-                // es. vado solo verso le migliori k postazioni per minimo tempo di attesa una volta arrivati.
-                // es. vado solo verso le migliori k postazioni per minimo tempo di spostamento + attesa una volta arrivati.
-                // valutarli in base a quanto peggiora l'ottimo in percentuale.
-
-				continue;
+                continue;
 			}
+
+            heuristic_extension_add(
+                he, k, max(s->t + (ins->t)[s->x][dest], (s->ek)[k])
+            );
+        }
+
+        // controllo invarianti
+        assert (he->k_cur_size >= 1 && he->k_cur_size <= he->extensions_max);
+        for (int i=he->k_cur_size; i < he->extensions_max; i++){
+            assert (
+                he->k[i] == -1 && he->k_times[i] == -1
+            );
+        }
+
+        heuristic_extension_calculate_best_extensions(he);
+
+        int ref_count = 0;
+        int number_of_extensions = 0;
+        for (int idx = 0; idx < he->best_k_cur_size; idx++) {
+
+            int k = he->best_k[idx];
+            int dest = (s->xk)[k];
+            
+            number_of_extensions++;
 
             State* s_next = state_create(allocator);//state_get_or_create(poolfree);
 
@@ -122,6 +146,9 @@ void solver_run(Instance* ins)
                 state_destroy(allocator, s_next);
             }
         }
+
+        assert (number_of_extensions >= 1 && number_of_extensions <= ins->max_number_of_extensions);
+        count_number_of_extensions[number_of_extensions]++;
     
         if (ref_count > 0){
             s->ref_count = ref_count;
@@ -141,22 +168,21 @@ void solver_run(Instance* ins)
     clock_t toc = clock();
 
     // print_optimal_solution(best_state);
-    
+    printf("solver_run number of extensions = ");
+    for (int i=0; i <= ins->max_number_of_extensions; i++){
+        printf("%d ", count_number_of_extensions[i]);
+    }
+    printf("\n");
+    printf("solver_run z* = %d , %.2f %%\n", best_obj_val, -100.0 * ((float)ins->U - best_obj_val) / (ins->U));
     printf("solver_run execution_time = %f s\n", (double)(toc - tic) / CLOCKS_PER_SEC);
-    printf("solver_run z* = %d\n", best_obj_val);
     printf("solver_run LIMIT = %d\n", LIMIT);
     printf("solver_run count = %d \n", allocator->count);
+
+    safe_free(count_number_of_extensions);
+    count_number_of_extensions = NULL;
+    heuristic_extension_destroy(he);
 
     pool_free(pool, allocator);
     state_allocator_destroy(allocator);
 }
 
-void print_optimal_solution(State* best_state)
-{
-    printf("print_optimal_solution ...\n");
-    State* cur = best_state;
-    do {
-        state_print(cur);
-        cur = cur->pred;
-    } while(cur != NULL);
-}
