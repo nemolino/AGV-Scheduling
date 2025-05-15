@@ -51,15 +51,28 @@ void heuristic_extension_calculate_best_extensions (HeuristicExtension* he)
     he->best_k_cur_size = min(he->extensions_threshold, he->k_cur_size);
     assert (he->best_k_cur_size >= 1);
 
-    for (int i=0; i < he->best_k_cur_size; i++){
-        he->best_k[i] = he->k[i];
-    }
+    // for (int i=0; i < he->extensions_max; i++){
+    //     printf("%d ", he->k[i]);
+    // }
+    // printf("\n");
+    // for (int i=0; i < he->extensions_max; i++){
+    //     printf("%d ", he->k_times[i]);
+    // }
+    // printf("\n");
+
+
+    // for (int i=0; i < he->best_k_cur_size; i++){
+    //     assert (he->k[he->k_cur_size-1-i] >= 0 && he->k[he->k_cur_size-1-i] <= W+1);
+    //     he->best_k[i] = he->k[he->k_cur_size-1-i];
+    // }
+
+
     // TODO
     // fixare il fatto che prendere le migliori estensioni al posto 
     // di estensioni casuali rompe tutto con un segfault, 
     // capire se il problema è qui oppure altrove
 
-    /*
+    
     // Selection Sort: Sort he->k based on increasing values of he->k_times
     for (int i = 0; i < he->k_cur_size - 1; i++) {
         int min_idx = i;
@@ -92,7 +105,15 @@ void heuristic_extension_calculate_best_extensions (HeuristicExtension* he)
     //     printf("%d ", he->k_times[i]);
     }
     // printf("\n");
-    */
+    
+
+
+    // for (int i=0; i < he->best_k_cur_size; i++){
+    //     printf("%d ", he->best_k[i]);
+    // }
+    // printf("\n");
+    // printf("\n");
+    
 
     /*
     for (int i=0; i < he->best_k_cur_size; i++){

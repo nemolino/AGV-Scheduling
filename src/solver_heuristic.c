@@ -53,10 +53,12 @@ void solver_run (Instance* ins, int extensions_threshold)
         // il primo stato finale che raggiungo è la soluzione ottima, 
         // perchè estraggo gli stati dal pool in ordine di tempo crescente
         if (state_is_final(s)){
-            assert (s->t <= best_obj_val);
-            //printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
+            //assert (s->t <= best_obj_val);
+            printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
+            //if (s->t < best_obj_val){
             best_obj_val = s->t;
             best_state = s;
+            //}
             break;
         }
 
@@ -138,6 +140,12 @@ void solver_run (Instance* ins, int extensions_threshold)
                 );
 			}
             
+            // capita solo nel caso euristico
+            if (s_next->t > ins->U){
+                state_destroy(allocator, s_next);
+                continue;
+            }
+
             bool pushed = pool_try_push(pool, allocator, s_next);
             if (pushed){
                 s_next->pred = s;
@@ -158,16 +166,25 @@ void solver_run (Instance* ins, int extensions_threshold)
             do {
                 pred = cur->pred;
                 state_destroy(allocator, cur);
-                assert (pred != NULL);
+
+                // capita solo nel caso euristico 
+                if (pred == NULL){
+                    break;
+                }
+                //assert (pred != NULL);
                 cur = pred;
                 cur->ref_count--;
             } while (cur->ref_count == 0);
         }
     }
 
+    if (best_state == NULL){
+        printf("ho tagliato tutti i path verso soluzioni migliori della trivial\n");
+    }
+
     clock_t toc = clock();
 
-    // print_optimal_solution(best_state);
+    //print_optimal_solution(best_state);
     printf("solver_run number of extensions = ");
     for (int i=0; i <= ins->max_number_of_extensions; i++){
         printf("%d ", count_number_of_extensions[i]);

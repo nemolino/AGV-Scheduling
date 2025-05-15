@@ -13,6 +13,9 @@ Vector* vector_create()
 
 void vector_append(Vector* vec, State* s) 
 {
+    assert (vec != NULL);
+    //assert (vec->data != NULL);
+
     if (vec->size == 0) {
         assert (vec->capacity == 0 && vec->data == NULL);
         vec->data = (State**)safe_malloc(INITIAL_CAPACITY * sizeof(State*));
