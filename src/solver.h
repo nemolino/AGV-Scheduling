@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
@@ -17,8 +18,28 @@
 
 // --- public -----------------------------------------------------------------
 
-//void solver_run (Instance* ins);
-void solver_run (Instance* ins, int extensions_threshold);
+typedef struct {
+    
+    int     z_optimal;
+    float   execution_time;
+
+    int     explored_states_count;
+    int*    extensions_from_each_state_count;
+
+    int     push_success_count; // 
+    int     push_fail_count;
+    int     bitset_used_size;
+    int     state_allocations_count;
+
+} SolverResult;
+
+SolverResult*   solver_result_create    ();
+void            solver_result_destroy   (SolverResult* sr);
+void            solver_result_clear     (SolverResult* sr);
+void            solver_result_print     (SolverResult* sr);
+
+void    solver_run              (SolverResult* sr, Instance* ins);
+void    solver_heuristic_run    (SolverResult* sr, Instance* ins, int extensions_threshold);
 
 // --- private ----------------------------------------------------------------
 
@@ -61,7 +82,7 @@ void    state_print                 (State* s);
 void    state_destroy               (StateAllocator* a, State* s);
 bool    state_is_final              (State* s); 
 bool    state_is_workstation_busy   (State* s, int i);
-bool    state_dominates             (State* s, State* other);
+//bool    state_dominates             (State* s, State* other);
 
 
 StateAllocator* state_allocator_create  ();
@@ -170,14 +191,11 @@ State*  pool_pop        (Pool* pool); // require: pool is not empty
 /*****************************************************************************/
 
 typedef struct {
-
     int     extensions_max;
     int     extensions_threshold;
-
     int*    k;
     int*    k_times;
     int     k_cur_size;
-
     int*    best_k;
     int     best_k_cur_size;
 } HeuristicExtension;

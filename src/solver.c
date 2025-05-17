@@ -4,13 +4,20 @@ int LIMIT;
 int J;
 int W;
     
-void solver_run(Instance* ins)
+void solver_run(SolverResult* sr, Instance* ins)
 {
     // global variables
     J = ins->J;
     W = ins->W;
     LIMIT = 0;
-    
+
+    sr->explored_states_count = 0;
+    for (int i=0; i <= ins->max_number_of_extensions; i++){
+        sr->extensions_from_each_state_count[i] = 0;
+    }
+    sr->push_success_count = 0;
+    sr->push_fail_count = 0;
+
     StateAllocator *allocator = state_allocator_create();
 
     clock_t tic = clock();
@@ -28,6 +35,8 @@ void solver_run(Instance* ins)
 
         State* s = pool_pop(pool);
 
+        sr->explored_states_count++;
+
         // printf("popped state : ");
         // state_print(s);
         
@@ -35,14 +44,14 @@ void solver_run(Instance* ins)
         // perchè estraggo gli stati dal pool in ordine di tempo crescente
         if (state_is_final(s)){
             assert (s->t <= best_obj_val);
-            printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
+            //printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
             best_obj_val = s->t;
             best_state = s;
             break;
         }
         
         int ref_count = 0;
-
+        int number_of_extensions = 0;
         for (
             int k = J-1-(s->count_finished); 
             k >= max(0, s->count_not_started-1); 
@@ -77,6 +86,8 @@ void solver_run(Instance* ins)
 
 				continue;
 			}
+
+            number_of_extensions++;
 
             State* s_next = state_create(allocator);//state_get_or_create(poolfree);
 
@@ -118,11 +129,15 @@ void solver_run(Instance* ins)
             if (pushed){
                 s_next->pred = s;
                 ref_count++;
+                sr->push_success_count++;
             } else{
                 state_destroy(allocator, s_next);
+                sr->push_fail_count++;
             }
         }
-    
+        
+        (sr->extensions_from_each_state_count[number_of_extensions])++;
+        
         if (ref_count > 0){
             s->ref_count = ref_count;
         } else{
@@ -141,22 +156,30 @@ void solver_run(Instance* ins)
     clock_t toc = clock();
 
     // print_optimal_solution(best_state);
+
+    sr->z_optimal = best_obj_val;
+    sr->execution_time = (double)(toc - tic) / CLOCKS_PER_SEC;
+
+    sr->bitset_used_size = LIMIT;
+    sr->state_allocations_count = allocator->count;
+
+
     
-    printf("solver_run execution_time = %f s\n", (double)(toc - tic) / CLOCKS_PER_SEC);
-    printf("solver_run z* = %d\n", best_obj_val);
-    printf("solver_run LIMIT = %d\n", LIMIT);
-    printf("solver_run count = %d \n", allocator->count);
+    //printf("solver_run execution_time = %f s\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+    //printf("solver_run z* = %d\n", best_obj_val);
+    // printf("solver_run LIMIT = %d\n", LIMIT);
+    // printf("solver_run count = %d \n", allocator->count);
 
     pool_free(pool, allocator);
     state_allocator_destroy(allocator);
 }
 
-void print_optimal_solution(State* best_state)
-{
-    printf("print_optimal_solution ...\n");
-    State* cur = best_state;
-    do {
-        state_print(cur);
-        cur = cur->pred;
-    } while(cur != NULL);
-}
+// void print_optimal_solution(State* best_state)
+// {
+//     printf("print_optimal_solution ...\n");
+//     State* cur = best_state;
+//     do {
+//         state_print(cur);
+//         cur = cur->pred;
+//     } while(cur != NULL);
+// }

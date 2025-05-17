@@ -100,20 +100,20 @@ bool state_is_workstation_busy (State* s, int i)
     return false;
 }
 
-bool state_dominates (State* s, State* other)
-{
-    bool time_condition = (s->t > other->t);
+// bool state_dominates (State* s, State* other)
+// {
+//     bool time_condition = (s->t > other->t);
 
-	int check_to = J - s->count_finished;
-	for (int k = 0; k < check_to; k++) {
+// 	int check_to = J - s->count_finished;
+// 	for (int k = 0; k < check_to; k++) {
 
-        if ((s->xk)[k] < (other->xk)[k]) 
-            return false;
+//         if ((s->xk)[k] < (other->xk)[k]) 
+//             return false;
 		
-        bool cond1 = (s->xk)[k] > (other->xk)[k] && time_condition;
-        bool cond2 = (s->xk)[k] == (other->xk)[k] && (s->ek)[k] > (other->ek)[k];
-		if (cond1 || cond2)
-			return false;
-	}
-	return true;
-}
+//         bool cond1 = (s->xk)[k] > (other->xk)[k] && time_condition;
+//         bool cond2 = (s->xk)[k] == (other->xk)[k] && (s->ek)[k] > (other->ek)[k];
+// 		if (cond1 || cond2)
+// 			return false;
+// 	}
+// 	return true;
+// }

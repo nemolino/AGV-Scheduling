@@ -4,27 +4,32 @@ int LIMIT;
 int J;
 int W;
 
-void print_optimal_solution (State* best_state)
-{
-    printf("print_optimal_solution ...\n");
-    State* cur = best_state;
-    do {
-        state_print(cur);
-        cur = cur->pred;
-    } while(cur != NULL);
-}
+// void print_optimal_solution (State* best_state)
+// {
+//     printf("print_optimal_solution ...\n");
+//     State* cur = best_state;
+//     do {
+//         state_print(cur);
+//         cur = cur->pred;
+//     } while(cur != NULL);
+// }
 
-void solver_run (Instance* ins, int extensions_threshold)
+void solver_heuristic_run (SolverResult* sr, Instance* ins, int extensions_threshold)
 {
     assert (extensions_threshold >= 1 && extensions_threshold <= ins->max_number_of_extensions);
-    printf("solver_run e = %d\n", extensions_threshold);
+    //printf("solver_run e = %d\n", extensions_threshold);
 
     // global variables
     J = ins->J;
     W = ins->W;
-    LIMIT = 0;    
-
-    int* count_number_of_extensions = (int*)safe_calloc(ins->max_number_of_extensions+1, sizeof(int));
+    LIMIT = 0; 
+    
+    sr->explored_states_count = 0;
+    for (int i=0; i <= ins->max_number_of_extensions; i++){
+        sr->extensions_from_each_state_count[i] = 0;
+    }
+    sr->push_success_count = 0;
+    sr->push_fail_count = 0;
 
     HeuristicExtension* he = heuristic_extension_create(
         ins->max_number_of_extensions, extensions_threshold
@@ -47,6 +52,8 @@ void solver_run (Instance* ins, int extensions_threshold)
 
         State* s = pool_pop(pool);
 
+        sr->explored_states_count++;
+
         // printf("popped state : ");
         // state_print(s);
         
@@ -54,7 +61,7 @@ void solver_run (Instance* ins, int extensions_threshold)
         // perchè estraggo gli stati dal pool in ordine di tempo crescente
         if (state_is_final(s)){
             //assert (s->t <= best_obj_val);
-            printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
+            //printf("SOLUZIONE OTTIMA TROVATA : stato finale raggiunto\n");
             //if (s->t < best_obj_val){
             best_obj_val = s->t;
             best_state = s;
@@ -80,6 +87,8 @@ void solver_run (Instance* ins, int extensions_threshold)
                 continue;
 			}
 
+            // passa il tempo di spostamento
+            // prima di muovere il job bisogna aspettare che la sua lavorazione finisca
             heuristic_extension_add(
                 he, k, max(s->t + (ins->t)[s->x][dest], (s->ek)[k])
             );
@@ -107,20 +116,25 @@ void solver_run (Instance* ins, int extensions_threshold)
             State* s_next = state_create(allocator);//state_get_or_create(poolfree);
 
             // passa il tempo di spostamento
-            s_next->t = s->t + (ins->t)[s->x][dest];
+            // s_next->t = s->t + (ins->t)[s->x][dest];
             
             // prima di muovere il job bisogna aspettare che la sua lavorazione finisca
-            s_next->t = max(s_next->t, (s->ek)[k]);
+            // s_next->t = max(s_next->t, (s->ek)[k]);
+
+            s_next->t = he->k_times[idx];
 
             // muovo il job verso la macchina successiva
             // passa il tempo di spostamento
             s_next->t += (ins->t)[dest][dest+1];
             s_next->x = dest+1;
 
-            for (int i = 0; i < J; i++) {
-                (s_next->xk)[i] = (s->xk)[i];
-                (s_next->ek)[i] = (s->ek)[i];
-            }
+            // for (int i = 0; i < J; i++) {
+            //     (s_next->xk)[i] = (s->xk)[i];
+            //     (s_next->ek)[i] = (s->ek)[i];
+            // }
+            memcpy(s_next->xk, s->xk, J * sizeof(int));
+            memcpy(s_next->ek, s->ek, J * sizeof(int));
+
             (s_next->xk)[k]++;
             (s_next->ek)[k] = (s_next->x == W+1) ? -1 : s_next->t + (ins->p)[s_next->x];
 
@@ -150,13 +164,16 @@ void solver_run (Instance* ins, int extensions_threshold)
             if (pushed){
                 s_next->pred = s;
                 ref_count++;
+                sr->push_success_count++;
             } else{
                 state_destroy(allocator, s_next);
+                sr->push_fail_count++;
             }
         }
 
         assert (number_of_extensions >= 1 && number_of_extensions <= ins->max_number_of_extensions);
-        count_number_of_extensions[number_of_extensions]++;
+        
+        (sr->extensions_from_each_state_count[number_of_extensions])++;
     
         if (ref_count > 0){
             s->ref_count = ref_count;
@@ -179,24 +196,32 @@ void solver_run (Instance* ins, int extensions_threshold)
     }
 
     if (best_state == NULL){
-        printf("ho tagliato tutti i path verso soluzioni migliori della trivial\n");
+        //printf("ho tagliato tutti i path verso soluzioni migliori della trivial\n");
     }
 
     clock_t toc = clock();
 
     //print_optimal_solution(best_state);
-    printf("solver_run number of extensions = ");
-    for (int i=0; i <= ins->max_number_of_extensions; i++){
-        printf("%d ", count_number_of_extensions[i]);
-    }
-    printf("\n");
-    printf("solver_run z* = %d , %.2f %%\n", best_obj_val, -100.0 * ((float)ins->U - best_obj_val) / (ins->U));
-    printf("solver_run execution_time = %f s\n", (double)(toc - tic) / CLOCKS_PER_SEC);
-    printf("solver_run LIMIT = %d\n", LIMIT);
-    printf("solver_run count = %d \n", allocator->count);
 
-    safe_free(count_number_of_extensions);
-    count_number_of_extensions = NULL;
+    sr->z_optimal = best_obj_val;
+    sr->execution_time = (double)(toc - tic) / CLOCKS_PER_SEC;
+
+    sr->bitset_used_size = LIMIT;
+    sr->state_allocations_count = allocator->count;
+
+    // printf("solver_run number of extensions = ");
+    // for (int i=0; i <= ins->max_number_of_extensions; i++){
+    //     printf("%d ", count_number_of_extensions[i]);
+    // }
+    // printf("\n");
+    // printf("solver_run z* = %d , %.2f %%\n", best_obj_val, -100.0 * ((float)ins->U - best_obj_val) / (ins->U));
+    // printf("solver_run execution_time = %f s\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+    // printf("solver_run LIMIT = %d\n", LIMIT);
+    // printf("solver_run count = %d \n", allocator->count);
+
+    // safe_free(count_number_of_extensions);
+    // count_number_of_extensions = NULL;
+
     heuristic_extension_destroy(he);
 
     pool_free(pool, allocator);
